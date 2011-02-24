@@ -66,10 +66,8 @@ See slicer-license.txt for Slicer3's licensing information.
 
 // ITK includes
 #include "itkImageIOBase.h"
-
-// for Bio-Formats C++ bindings
-#include "loci-common.h"
-#include "bio-formats.h"
+#include <sstream>
+#include <iostream>
 
 namespace itk
 {
@@ -116,12 +114,29 @@ protected:
   ~BioFormatsImageIO();
 
 private:
-  jace::proxy::loci::formats::IFormatReader       * m_Reader;
-  jace::proxy::loci::formats::ImageReader         * m_ImageReader;
-  jace::proxy::loci::formats::ChannelFiller       * m_ChannelFiller;
-  jace::proxy::loci::formats::ChannelSeparator    * m_ChannelSeparator;
-  jace::proxy::loci::formats::ChannelMerger       * m_ChannelMerger;
-  jace::proxy::loci::formats::ImageWriter         * m_Writer;
+  std::string m_JavaCommand;
+  std::string m_ClassPath;
+
+  template <typename ReturnType>
+  ReturnType valueOf( const std::string &s )
+  {
+    ReturnType res;
+    std::istringstream(s) >> res;
+    return res;
+  }
+
+  char ** toCArray( std::vector< std::string > & args )
+  {
+    char **argv = new char *[args.size() + 1];
+    for( int i = 0; i < static_cast< int >( args.size() ); i++ )
+      {
+      itkDebugMacro( "BioFormatsImageIO::toCArray::args["<<i<<"] = " << args[i]);
+      argv[i] = (char*)args[i].c_str();
+      }
+    argv[args.size()] = NULL;
+    return argv;
+  }
+
 };
 
 }

@@ -42,9 +42,4 @@ in binary form with Bio-Formats itself, your combined binary work must be
 distributed under the terms of the GPL v2 license.
 For more details, please see http://www.loci.wisc.edu/software/bio-formats"
 )
-
-  find_package( BioFormats )
-  if( NOT BIOFORMATS_FOUND )
-    message("You requested to use BioFormats but some components are missing")
-  endif()
 endif()

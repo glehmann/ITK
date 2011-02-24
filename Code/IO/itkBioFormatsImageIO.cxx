@@ -68,6 +68,7 @@ See slicer-license.txt for Slicer3's licensing information.
 #include "itkBioFormatsImageIO.h"
 #include "itkIOCommon.h"
 #include "itkExceptionObject.h"
+#include "itksys/Process.h"
 
 #include <cmath>
 
@@ -95,336 +96,230 @@ BioFormatsImageIO::BioFormatsImageIO()
 
   this->m_FileType = Binary;
 
-  try
+  const char name[] = "ITK_AUTOLOAD_PATH";
+  const char* namePtr;
+  namePtr = name;
+  char * path;
+  path = getenv(name);
+  std::string dir("");
+
+  if( path == NULL)
     {
-    jace::StaticVmLoader* tmpLoader = (jace::StaticVmLoader*)jace::helper::getVmLoader();
-
-    if( tmpLoader == NULL )
-      {
-
-      // initialize the Java virtual machine
-      itkDebugMacro("Creating JVM...");
-      jace::OptionList list;
-      jace::StaticVmLoader loader(JNI_VERSION_1_4);
-
-      const char name[] = "ITK_AUTOLOAD_PATH";
-      const char* namePtr;
-      namePtr = name;
-      char * path;
-      path = getenv(name);
-      std::string dir("");
-
-      if( path == NULL)
-        {
-        itkExceptionMacro("ITK_AUTOLOAD_PATH is not set, you must set this environment variable and point it to the directory containing the bio-formats.jar file");
-        }
-
-      dir.assign(path);
-
-      if( dir.at(dir.length() - 1) != SLASH )
-        {
-        dir.append(1,SLASH);
-        }
-
-      std::string classpath = dir+"jace-runtime.jar";
-
-      classpath += PATHSTEP+dir+"bio-formats.jar";
-      classpath += PATHSTEP+dir+"loci_tools.jar";
-
-      list.push_back(jace::ClassPath( classpath ) );
-
-      list.push_back(jace::CustomOption("-Xcheck:jni"));
-      list.push_back(jace::CustomOption("-Xmx256m"));
-      list.push_back(jace::CustomOption("-Djava.awt.headless=true"));
-      list.push_back(jace::CustomOption("-Djava.library.path=" + dir));
-      jace::helper::createVm(loader, list, false);
-      itkDebugMacro("JVM created.");
-      }
+    itkExceptionMacro("ITK_AUTOLOAD_PATH is not set, you must set this environment variable and point it to the directory containing the bio-formats.jar file");
     }
-  catch ( jace::JNIException & jniException )
+  dir.assign(path);
+  if( dir.at(dir.length() - 1) != SLASH )
     {
-    itkExceptionMacro("Exception creating JVM: " << jniException.what());
+    dir.append(1,SLASH);
     }
+  std::string classpath = dir+"bio-formats.jar";
+  classpath += PATHSTEP+dir+"loci_tools.jar";
+  classpath += PATHSTEP+dir;
+  m_ClassPath = classpath;
 
-  try
-    {
-    itkDebugMacro("Creating Bio-Formats objects...");
-    m_Reader = m_ImageReader = new jace::proxy::loci::formats::ImageReader;
-    m_Reader = m_ChannelFiller = new jace::proxy::loci::formats::ChannelFiller(*m_Reader);
+  m_JavaCommand = "/usr/bin/java"; // todo: let the user choose the java executable
 
-    m_ChannelSeparator = NULL;
-    m_Reader = m_ChannelMerger = new jace::proxy::loci::formats::ChannelMerger(*m_Reader);
-    m_Writer = new jace::proxy::loci::formats::ImageWriter;
-    itkDebugMacro("Created m_Reader and m_Writer.");
-    }
-  catch ( jace::proxy::java::lang::Exception & e )
-    {
-    itkExceptionMacro("A Java error occurred: " << jace::proxy::loci::common::DebugTools::getStackTrace(e));
-    }
-  catch ( jace::JNIException & jniException )
-    {
-    itkExceptionMacro("A JNI error occurred: " << jniException.what());
-    }
-  catch (std::exception& e)
-    {
-    itkExceptionMacro("A C++ error occurred: " << e.what());
-    }
+  itkDebugMacro("BioFormatsImageIO base command: "+m_JavaCommand+" -cp "+classpath);
 }
 
 BioFormatsImageIO::~BioFormatsImageIO()
-  {
-  if (m_ImageReader != NULL)
-    {
-    delete m_ImageReader;
-    m_ImageReader = NULL;
-    }
-  if (m_ChannelFiller != NULL)
-    {
-    delete m_ChannelFiller;
-    m_ChannelFiller = NULL;
-    }
-  if (m_ChannelSeparator != NULL)
-    {
-    delete m_ChannelSeparator;
-    m_ChannelSeparator = NULL;
-    }
-  if (m_ChannelMerger != NULL)
-    {
-    delete m_ChannelMerger;
-    m_ChannelMerger = NULL;
-    }
-  if (m_Writer != NULL)
-    {
-    delete m_Writer;
-    m_Writer = NULL;
-    }
+{
 }
 
-bool BioFormatsImageIO::CanReadFile(const char* FileNameToRead)
-  {
+bool BioFormatsImageIO::CanReadFile( const char* FileNameToRead )
+{
   itkDebugMacro( "BioFormatsImageIO::CanReadFile: FileNameToRead = " << FileNameToRead);
 
-  std::string filename(FileNameToRead);
+  std::vector< std::string > args;
+  args.push_back( m_JavaCommand );
+  args.push_back( "-cp" );
+  args.push_back( m_ClassPath );
+  args.push_back( "CanReadFile" );
+  args.push_back( FileNameToRead );
+  // convert to something usable by itksys
+  char ** argv = toCArray(args);
 
-  if (filename == "")
-    {
-    itkDebugMacro("A file name must be specified.");
-    return false;
-    }
-
-  bool isType = 0;
-  try
-    {
-    // call Bio-Formats to check file type
-    isType = ((jace::proxy::loci::formats::IFormatHandler*) m_Reader)->isThisType(filename);
-    itkDebugMacro("isType = " << isType);
-    }
-  catch ( jace::proxy::java::lang::Exception & e)
-    {
-    itkExceptionMacro("A Java error occurred: " << jace::proxy::loci::common::DebugTools::getStackTrace(e));
-    }
-  catch ( jace::JNIException & jniException )
-    {
-    itkExceptionMacro("A JNI error occurred: " << jniException.what());
-    }
-  catch (std::exception& e)
-    {
-    itkExceptionMacro("A C++ error occurred: " << e.what());
-    }
-  return isType;
+  itksysProcess *process = itksysProcess_New();
+  itksysProcess_SetCommand(process, argv);
+  itksysProcess_Execute(process);
+  itksysProcess_WaitForExit(process, NULL);
+  int retcode = itksysProcess_GetExitValue(process);
+  itksysProcess_Delete(process);
+  delete argv;
+  return retcode == 0;
 }
 
 void BioFormatsImageIO::ReadImageInformation()
 {
   itkDebugMacro( "BioFormatsImageIO::ReadImageInformation: m_FileName = " << m_FileName);
 
-  try
+  std::vector< std::string > args;
+  args.push_back( m_JavaCommand );
+  args.push_back( "-cp" );
+  args.push_back( m_ClassPath );
+  args.push_back( "ITKReadImageInformation" );
+  args.push_back( m_FileName );
+  // convert to something usable by itksys
+  char **argv = toCArray(args);
+
+  std::string imgInfo;
+  std::string errorMessage;
+  char * pipedata;
+  int pipedatalength = 1000;
+
+  itksysProcess *process = itksysProcess_New();
+  itksysProcess_SetCommand(process, argv);
+  itksysProcess_Execute(process);
+
+  while( int retcode = itksysProcess_WaitForData(process, &pipedata, &pipedatalength, NULL) )
     {
-    // attach OME metadata object
-    jace::proxy::loci::formats::meta::IMetadata omeMeta =
-      jace::proxy::loci::formats::MetadataTools::createOMEXMLMetadata();
-
-    m_Reader->setMetadataStore(omeMeta);
-
-    // initialize dataset
-    itkDebugMacro("Initializing...");
-    m_Reader->setId(m_FileName);
-    itkDebugMacro("Initialized.");
-
-    int seriesCount = m_Reader->getSeriesCount();
-    itkDebugMacro("Series count = " << seriesCount);
-
-    // set ITK byte order
-    bool little = m_Reader->isLittleEndian();
-    if (little)
+    // itkDebugMacro( "BioFormatsImageIO::ReadImageInformation: reading " << pipedatalength << " bytes.");
+    if( retcode == itksysProcess_Pipe_STDOUT )
       {
-      SetByteOrderToLittleEndian(); // m_ByteOrder
+      // append that data to our img information to parse it much easily later
+      imgInfo += std::string( pipedata, pipedatalength );
       }
     else
       {
-      SetByteOrderToBigEndian(); // m_ByteOrder
+      errorMessage += std::string( pipedata, pipedatalength );
       }
-
-    // set ITK component type
-    int pixelType = m_Reader->getPixelType();
-    itkDebugMacro("Bytes per pixel = " << jace::proxy::loci::formats::FormatTools::getBytesPerPixel(pixelType) );
-    IOComponentType itkComponentType;
-    if (pixelType == jace::proxy::loci::formats::FormatTools::UINT8())
-      {
-      itkComponentType = UCHAR;
-      }
-    else if (pixelType == jace::proxy::loci::formats::FormatTools::INT8())
-      {
-      itkComponentType = CHAR;
-      }
-    else if (pixelType == jace::proxy::loci::formats::FormatTools::UINT16())
-      {
-      itkComponentType = USHORT;
-      }
-    else if (pixelType == jace::proxy::loci::formats::FormatTools::INT16())
-      {
-      itkComponentType = SHORT;
-      }
-    else if (pixelType == jace::proxy::loci::formats::FormatTools::UINT32())
-      {
-      itkComponentType = UINT;
-      }
-    else if (pixelType == jace::proxy::loci::formats::FormatTools::INT32())
-      {
-      itkComponentType = INT;
-      }
-    else if (pixelType == jace::proxy::loci::formats::FormatTools::FLOAT())
-      {
-      itkComponentType = FLOAT;
-      }
-    else if (pixelType == jace::proxy::loci::formats::FormatTools::DOUBLE())
-      {
-      itkComponentType = DOUBLE;
-      }
-    else
-      {
-      itkComponentType = UNKNOWNCOMPONENTTYPE;
-      }
-
-    SetComponentType(itkComponentType); // m_ComponentType
-
-    if (itkComponentType == UNKNOWNCOMPONENTTYPE)
-      {
-      itkExceptionMacro("Unknown pixel type: " << pixelType);
-      }
-
-    // get pixel resolution and dimensional extents
-    int sizeX = m_Reader->getSizeX();
-    int sizeY = m_Reader->getSizeY();
-    int sizeZ = m_Reader->getSizeZ();
-    int sizeC = m_Reader->getSizeC();
-    int sizeT = m_Reader->getSizeT();
-    int effSizeC = m_Reader->getEffectiveSizeC();
-    int rgbChannelCount = m_Reader->getRGBChannelCount();
-    int imageCount = m_Reader->getImageCount();
-
-    itkDebugMacro("Dimensional extents:" << std::endl
-      << "\tSizeX = " << sizeX << std::endl
-      << "\tSizeY = " << sizeY << std::endl
-      << "\tSizeZ = " << sizeZ << std::endl
-      << "\tSizeC = " << sizeC << std::endl
-      << "\tSizeT = " << sizeT << std::endl
-      << "\tRGB Channel Count = " << rgbChannelCount << std::endl
-      << "\tEffective SizeC = " << effSizeC << std::endl
-      << "\tImage Count = " << imageCount);
-
-    // NB: Always return 5D, to be unambiguous.
-    int numDims = 5;
-
-    SetNumberOfDimensions(numDims);
-    m_Dimensions[0] = sizeX;
-    m_Dimensions[1] = sizeY;
-
-    m_Dimensions[2] = sizeZ;
-    m_Dimensions[3] = sizeT;
-    m_Dimensions[4] = effSizeC;
-
-    // set ITK pixel type
-    IOPixelType itkPixelType;
-
-    if (rgbChannelCount == 1)
-      {
-      itkPixelType = SCALAR;
-      }
-    else if (rgbChannelCount == 3)
-      {
-      itkPixelType = RGB;
-      }
-    else
-      {
-      itkPixelType = VECTOR;
-      }
-
-    SetPixelType(itkPixelType); // m_PixelType
-    SetNumberOfComponents(rgbChannelCount); // m_NumberOfComponents
-
-    // Get physical resolution
-
-    // CTR - Review invalid memory access error on some systems (OS X 10.5)
-    jace::proxy::loci::formats::meta::MetadataRetrieve retrieve =
-      jace::proxy::loci::formats::MetadataTools::asRetrieve(omeMeta);
-
-   double physX = retrieve.getPixelsPhysicalSizeX(0).doubleValue();
-   if (physX == 0.0)
-     {
-     physX = 1.0;
-     }
-   itkDebugMacro("After physX = " << physX);
-
-   double physY = retrieve.getPixelsPhysicalSizeY(0).doubleValue();
-   if ( physY == 0.0 )
-      {
-      physY = 1.0;
-      }
-   itkDebugMacro("After physY = " << physY);
-
-   double physZ = retrieve.getPixelsPhysicalSizeZ(0).doubleValue();
-   if ( physZ == 0.0 )
-     {
-     physZ = 1.0;
-     }
-
-   m_Spacing[0] = physX;
-   m_Spacing[1] = physY;
-
-   // TODO: verify m_Spacing.length > 2
-
-   if ( imageCount > 1 )
-     {
-     m_Spacing[2] = physZ;
-     }
-   itkDebugMacro("After physZ = " << physZ);
-
-   itkDebugMacro("Physical resolution = " << physX << " x " << physY << " x " << physZ);
-
-   double timeIncrement = 1.0;
-   jace::proxy::java::lang::Double timeIncrementDouble = retrieve.getPixelsTimeIncrement(0);
-   if ( !timeIncrementDouble.isNull() )
-     {
-     timeIncrement = retrieve.getPixelsTimeIncrement(0).doubleValue();
-     }
-
-   m_Spacing[3] = timeIncrement;
-
-   itkDebugMacro("Physical resolution = " << physX << " x " << physY
-                 << " x " << physZ << " x " << timeIncrement);
     }
-  catch ( jace::proxy::java::lang::Exception & e )
+
+  itksysProcess_WaitForExit(process, NULL);
+
+  // we don't need that anymore
+  delete[] argv;
+
+  int state = itksysProcess_GetState(process);
+  switch( state )
     {
-    itkExceptionMacro("A Java error occurred: " << jace::proxy::loci::common::DebugTools::getStackTrace(e));
+    case itksysProcess_State_Exited:
+      {
+      int retCode = itksysProcess_GetExitValue(process);
+      itksysProcess_Delete(process);
+      itkDebugMacro("BioFormatsImageIO::ReadImageInformation: retCode = " << retCode);
+      if ( retCode != 0 )
+        {
+        itkExceptionMacro(<<"BioFormatsImageIO: ITKReadImageInformation exited with return value: " << retCode << std::endl
+                          << errorMessage);
+        }
+      break;
+      }
+    case itksysProcess_State_Error:
+      {
+      std::string msg = itksysProcess_GetErrorString(process);
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: ITKReadImageInformation error:" << std::endl << msg);
+      break;
+      }
+    case itksysProcess_State_Exception:
+      {
+      std::string msg = itksysProcess_GetExceptionString(process);
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: ITKReadImageInformation exception:" << std::endl << msg);
+      break;
+      }
+    case itksysProcess_State_Executing:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKReadImageInformation is still running.");
+      break;
+      }
+    case itksysProcess_State_Expired:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKReadImageInformation expired.");
+      break;
+      }
+    case itksysProcess_State_Killed:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKReadImageInformation killed.");
+      break;
+      }
+    case itksysProcess_State_Disowned:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKReadImageInformation disowned.");
+      break;
+      }
+//     case kwsysProcess_State_Starting:
+//       {
+//       break;
+//       }
+    default:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKReadImageInformation is in unknown state.");
+      break;
+      }
     }
-  catch ( jace::JNIException & jniException )
+
+  this->SetNumberOfDimensions(5);
+
+  // we have one thing per line
+  int p0 = 0;
+  int p1 = 0;
+  std::string line;
+  // is little endian?
+  p1 = imgInfo.find("\n", p0);
+  line = imgInfo.substr( p0, p1 );
+  if( valueOf<bool>(line) )
     {
-    itkExceptionMacro("A JNI error occurred: " << jniException.what());
+    SetByteOrderToLittleEndian(); // m_ByteOrder
     }
-  catch (std::exception& e)
+  else
     {
-    itkExceptionMacro("A C++ error occurred: " << e.what());
+    SetByteOrderToBigEndian(); // m_ByteOrder
+    }
+  // component type
+  p0 = p1+1;
+  p1 = imgInfo.find("\n", p0);
+  line = imgInfo.substr( p0, p1 );
+  int componentType = valueOf<int>(line);
+  if( componentType == UNKNOWNCOMPONENTTYPE)
+    {
+    itkExceptionMacro("Unknown pixel type:");
+    }
+  SetComponentType( (itk::ImageIOBase::IOComponentType)componentType );
+  // x, y, z, t, c
+  for( int i=0; i<5; i++ )
+    {
+    p0 = p1+1;
+    p1 = imgInfo.find("\n", p0);
+    line = imgInfo.substr( p0, p1 );
+    this->SetDimensions( i, valueOf<int>(line) );
+    }
+  // number of components
+  p0 = p1+1;
+  p1 = imgInfo.find("\n", p0);
+  line = imgInfo.substr( p0, p1 );
+  int nbOfComponents = valueOf<int>(line);
+  if( nbOfComponents == 1 )
+    {
+    SetPixelType( SCALAR );
+    }
+  else if( nbOfComponents == 3 )
+    {
+    SetPixelType( RGB );
+    }
+  else
+    {
+    SetPixelType( VECTOR );
+    }
+  SetNumberOfComponents( nbOfComponents ); // m_NumberOfComponents
+  // spacing
+  for( int i=0; i<5; i++ )
+    {
+    p0 = p1+1;
+    p1 = imgInfo.find("\n", p0);
+    line = imgInfo.substr( p0, p1 );
+    double s = valueOf<double>(line);
+    if( s == 0.0 )
+      {
+      s = 1.0;
+      }
+    this->SetSpacing( i, s );
     }
 }
 
@@ -432,204 +327,120 @@ void BioFormatsImageIO::Read(void* pData)
 {
   itkDebugMacro("BioFormatsImageIO::Read");
 
-  try
+  std::vector< std::string > args;
+  args.push_back( m_JavaCommand );
+  args.push_back( "-cp" );
+  args.push_back( m_ClassPath );
+  args.push_back( "ITKRead" );
+  args.push_back( m_FileName );
+  // convert to something usable by itksys
+  char **argv = toCArray(args);
+
+  char * data = (char *)pData;
+  long pos = 0;
+  std::string errorMessage;
+  char * pipedata;
+  int pipedatalength;
+
+  itksysProcess *process = itksysProcess_New();
+  itksysProcess_SetPipeShared(process, itksysProcess_Pipe_STDIN, 0);
+//  itksysProcess_SetPipeShared(process, itksysProcess_Pipe_STDERR, 1);
+  itksysProcess_SetCommand(process, argv);
+  itksysProcess_Execute(process);
+
+  while( int retcode = itksysProcess_WaitForData(process, &pipedata, &pipedatalength, NULL) )
     {
-    const int pixelType = m_Reader->getPixelType();
-    const int bpp = jace::proxy::loci::formats::FormatTools::getBytesPerPixel(pixelType);
-    const int rgbChannelCount = m_Reader->getRGBChannelCount();
-
-    itkDebugMacro("Pixel type:" << std::endl
-      << "Pixel type code = " << pixelType << std::endl
-      << "Bytes per pixel = " << bpp << std::endl
-      << "RGB channel count = " << rgbChannelCount);
-
-    // check IO region to identify the planar extents desired
-    ImageIORegion region = GetIORegion();
-    int regionDim = region.GetImageDimension();
-    int xStart = 0, xCount = 1;
-    int yStart = 0, yCount = 1;
-    int zStart = 0, zCount = 1;
-    int tStart = 0, tCount = 1;
-    int cStart = 0, cCount = 1;
-
-    int xIndex = 0;
-    int yIndex = 1;
-    int zIndex = 2;
-    int tIndex = 3;
-    int cIndex = 4;
-
-    for (int dim = 0; dim < regionDim; dim++)
+    if( retcode == itksysProcess_Pipe_STDOUT )
       {
-      int index = region.GetIndex(dim);
-      int size = region.GetSize(dim);
-      if (dim == xIndex)
+      // std::cout << "pos: " << pos << "  reading: " << pipedatalength << std::endl;
+      for( long i=0; i<pipedatalength; i++, pos++ )
         {
-        xStart = index;
-        xCount = size;
-        }
-      else if (dim == yIndex)
-        {
-        yStart = index;
-        yCount = size;
-        }
-      else if (dim == zIndex)
-        {
-        zStart = index;
-        zCount = size;
-        }
-      else if (dim == tIndex)
-        {
-        tStart = index;
-        tCount = size;
-        }
-      else if (dim == cIndex)
-        {
-        cStart = index;
-        cCount = size;
+        data[pos] = pipedata[i];
         }
       }
-
-    const int bytesPerPlane = xCount * yCount * bpp * rgbChannelCount;
-    const bool isInterleaved = m_Reader->isInterleaved();
-
-    itkDebugMacro("Region extents:" << std::endl
-      << "\tRegion dimension = " << regionDim << std::endl
-      << "\tX: start = " << xStart << ", count = " << xCount << std::endl
-      << "\tY: start = " << yStart << ", count = " << yCount << std::endl
-      << "\tZ: start = " << zStart << ", count = " << zCount << std::endl
-      << "\tT: start = " << tStart << ", count = " << tCount << std::endl
-      << "\tC: start = " << cStart << ", count = " << cCount << std::endl
-      << "\tBytes per plane = " << bytesPerPlane << std::endl
-      << "\tIsInterleaved = " << isInterleaved);
-
-
-    itkDebugMacro(<< "Image count = " << m_Reader->getImageCount() );
-
-    // allocate temporary array
-    const bool canDoDirect = (rgbChannelCount == 1 || isInterleaved);
-
-    jbyte * tmpData = NULL;
-
-    if ( !canDoDirect )
+    else if( retcode == itksysProcess_Pipe_STDERR )
       {
-      tmpData = new jbyte[bytesPerPlane];
+      std::string error = std::string( pipedata, pipedatalength );
+      itkDebugMacro("BioFormatsImageIO::Read error = " << error);
+      errorMessage += error;
       }
+    }
 
-    jbyte* jData = (jbyte*) pData;
-    ByteArray buf(bytesPerPlane); // pre-allocate buffer
+  itksysProcess_WaitForExit(process, NULL);
 
-    for (int c=cStart; c<cStart+cCount; c++)
+  // we don't need that anymore
+  delete[] argv;
+
+  int state = itksysProcess_GetState(process);
+  switch( state )
+    {
+    case itksysProcess_State_Exited:
       {
-      for (int t=tStart; t<tStart+tCount; t++)
+      int retCode = itksysProcess_GetExitValue(process);
+      itksysProcess_Delete(process);
+      itkDebugMacro("BioFormatsImageIO::Read: retCode = " << retCode);
+      if ( retCode != 0 )
         {
-        for (int z=zStart; z<zStart+zCount; z++)
-          {
-          int no = m_Reader->getIndex(z, c, t);
-          itkDebugMacro("Reading image plane " << no + 1
-            << " (Z=" << z << ", T=" << t << ", C=" << c << ")"
-            << " of " << m_Reader->getImageCount() << " available planes)");
-
-          m_Reader->openBytes(no, buf, xStart, yStart, xCount, yCount);
-
-          JNIEnv* env = jace::helper::attach();
-          jbyteArray jArray = static_cast<jbyteArray>(buf.getJavaJniArray());
-
-          if (canDoDirect)
-            {
-            env->GetByteArrayRegion(jArray, 0, bytesPerPlane, jData);
-            }
-          else
-            {
-            // need to reorganize byte array after copy
-            env->GetByteArrayRegion(jArray, 0, bytesPerPlane, tmpData);
-
-            // reorganize elements
-            int pos = 0;
-            for (int x=0; x<xCount; x++)
-              {
-              for (int y=0; y<yCount; y++)
-                {
-                for (int i=0; i<rgbChannelCount; i++)
-                  {
-                  for (int b=0; b<bpp; b++)
-                    {
-                    int index = yCount * (xCount * (rgbChannelCount * b + i) + x) + y;
-                    jData[pos++] = tmpData[index];
-                    }
-                  }
-                }
-              }
-            }
-          jData += bytesPerPlane;
-          }
+        itkExceptionMacro(<<"BioFormatsImageIO: ITKRead exited with return value: " << retCode << std::endl
+                          << errorMessage);
         }
+      break;
       }
-
-    // delete temporary array
-    if (tmpData != NULL)
+    case itksysProcess_State_Error:
       {
-      delete tmpData;
-      tmpData = NULL;
+      std::string msg = itksysProcess_GetErrorString(process);
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: ITKRead error:" << std::endl << msg);
+      break;
       }
+    case itksysProcess_State_Exception:
+      {
+      std::string msg = itksysProcess_GetExceptionString(process);
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: ITKRead exception:" << std::endl << msg);
+      break;
+      }
+    case itksysProcess_State_Executing:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKRead is still running.");
+      break;
+      }
+    case itksysProcess_State_Expired:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKRead expired.");
+      break;
+      }
+    case itksysProcess_State_Killed:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKRead killed.");
+      break;
+      }
+    case itksysProcess_State_Disowned:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKRead disowned.");
+      break;
+      }
+//     case kwsysProcess_State_Starting:
+//       {
+//       break;
+//       }
+    default:
+      {
+      itksysProcess_Delete(process);
+      itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKRead is in unknown state.");
+      break;
+      }
+    }
 
-    ((jace::proxy::loci::formats::IFormatHandler*)m_Reader)->close();
-    }
-  catch ( jace::proxy::java::lang::Exception & e )
-    {
-    itkExceptionMacro("A Java error occurred: " << jace::proxy::loci::common::DebugTools::getStackTrace(e));
-    }
-  catch ( jace::JNIException & jniException )
-    {
-    itkExceptionMacro("A JNI error occurred: " << jniException.what());
-    }
-  catch (std::exception& e)
-    {
-    itkExceptionMacro("A C++ error occurred: " << e.what());
-    }
-  itkDebugMacro("Done.");
 }
 
 bool BioFormatsImageIO::CanWriteFile(const char* name)
 {
   itkDebugMacro("BioFormatsImageIO::CanWriteFile: name = " << name);
-
-  std::string filename(name);
-
-  if (filename == "")
-    {
-    itkDebugMacro("A FileName must be specified.");
-    return false;
-    }
-
-  bool isType = 0;
-
-  try
-    {
-    // call Bio-Formats to check file type
-    jace::proxy::loci::formats::ImageWriter writer;
-    isType = writer.isThisType(filename);
-    itkDebugMacro("isType = " << isType);
-    }
-  catch ( jace::proxy::java::lang::Exception & e )
-    {
-    itkExceptionMacro("A Java error occurred: " << jace::proxy::loci::common::DebugTools::getStackTrace(e));
-    }
-  catch ( jace::JNIException & jniException )
-    {
-    itkExceptionMacro("A JNI error occurred: " << jniException.what());
-    }
-  catch (std::exception& e)
-    {
-    itkExceptionMacro("A C++ error occurred: " << e.what());
-    }
-
-  // The Bioformats library provides implementations for file writing,
-  // however, they have not been exposed here yet. Therefore, we return
-  // false here until such functionalities are implemented in the Write()
-  // and WriteImageInformation().
-  //
-  // Once the implementations are fixed, we should return "isType" instead.
-  //
   return false;
 }
 

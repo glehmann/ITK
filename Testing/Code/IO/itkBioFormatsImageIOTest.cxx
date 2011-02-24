@@ -38,7 +38,7 @@ int itkBioFormatsImageIOTest( int argc, char * argv [] )
     }
 
   typedef unsigned char       PixelType;
-  const unsigned int          Dimension = 2;
+  const unsigned int          Dimension = 3;
 
   typedef itk::Image< PixelType, Dimension >   ImageType;
 
@@ -64,6 +64,10 @@ int itkBioFormatsImageIOTest( int argc, char * argv [] )
 
   try
     {
+    reader->UpdateOutputInformation();
+    std::cout << "====================================================" << std::endl;
+    reader->GetOutput()->Print(std::cout);
+    std::cout << "====================================================" << std::endl;
     writer->Update();
     }
   catch (itk::ExceptionObject &e)

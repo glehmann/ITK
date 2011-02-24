@@ -89,7 +89,7 @@ public:
   /** Enums used to manipulate the pixel type. The pixel type provides
    * context for automatic data conversions (for instance, RGB to
    * SCALAR, VECTOR to SCALAR). */
-  typedef  enum { UNKNOWNPIXELTYPE, SCALAR, RGB, RGBA, OFFSET, VECTOR,
+  typedef  enum { UNKNOWNPIXELTYPE=0, SCALAR, RGB, RGBA, OFFSET, VECTOR,
                   POINT, COVARIANTVECTOR, SYMMETRICSECONDRANKTENSOR,
                   DIFFUSIONTENSOR3D, COMPLEX, FIXEDARRAY, MATRIX }  IOPixelType;
 
@@ -97,7 +97,7 @@ public:
    * refers to the actual storage class associated with either a
    * SCALAR pixel type or elements of a compound pixel.
    */
-  typedef  enum { UNKNOWNCOMPONENTTYPE, UCHAR, CHAR, USHORT, SHORT, UINT, INT,
+  typedef  enum { UNKNOWNCOMPONENTTYPE=0, UCHAR, CHAR, USHORT, SHORT, UINT, INT,
                   ULONG, LONG, FLOAT, DOUBLE } IOComponentType;
 
   /** Set/Get the number of independent variables (dimensions) in the
