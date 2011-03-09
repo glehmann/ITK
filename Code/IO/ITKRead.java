@@ -24,8 +24,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import java.io.IOException;
 import loci.formats.*;
-import loci.formats.meta.MetadataRetrieve;
-import loci.formats.meta.MetadataStore;
+import loci.formats.in.DefaultMetadataOptions;
+import loci.formats.in.MetadataLevel;
 import java.io.BufferedOutputStream;
 
 /**
@@ -48,20 +48,10 @@ public final class ITKRead {
     throws FormatException, IOException
   {
     IFormatReader reader = new ImageReader();
-    reader = new ChannelSeparator(reader);
-
-    reader.setMetadataFiltered(true);
-    reader.setOriginalMetadataPopulated(true);
-    MetadataStore store = MetadataTools.createOMEXMLMetadata();
-    if (store == null) System.err.println("OME-Java library not found.");
-    else reader.setMetadataStore(store);
-
+    reader.setMetadataOptions(new DefaultMetadataOptions(MetadataLevel.MINIMUM));
     reader.setGroupFiles(false); // avoid grouping all the .lsm when a .mdb is there
     reader.setId(args[0]);
     reader.setSeries(0);
-
-     store = reader.getMetadataStore();
-    MetadataRetrieve meta = (MetadataRetrieve) store;
 
     BufferedOutputStream out = new BufferedOutputStream(System.out);
 
