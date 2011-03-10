@@ -112,8 +112,7 @@ BioFormatsImageIO::BioFormatsImageIO()
     {
     dir.append(1,SLASH);
     }
-  std::string classpath = dir+"bio-formats.jar";
-  classpath += PATHSTEP+dir+"loci_tools.jar";
+  std::string classpath = dir+"loci_tools.jar";
   classpath += PATHSTEP+dir;
   m_ClassPath = classpath;
 
