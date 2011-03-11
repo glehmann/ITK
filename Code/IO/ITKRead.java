@@ -55,10 +55,16 @@ public final class ITKRead {
 
     BufferedOutputStream out = new BufferedOutputStream(System.out);
 
-    for( int z=0; z<reader.getSizeZ(); z++ )
+    for( int c=0; c<reader.getSizeC(); c++ )
       {
-      byte[] image = reader.openBytes( reader.getIndex(z, 0, 0) );
-      out.write(image);
+      for( int t=0; t<reader.getSizeT(); t++ )
+        {
+        for( int z=0; z<reader.getSizeZ(); z++ )
+          {
+          byte[] image = reader.openBytes( reader.getIndex(z, c, t) );
+          out.write(image);
+          }
+        }
       }
     out.close();
     System.out.close();
