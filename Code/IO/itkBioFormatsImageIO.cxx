@@ -261,8 +261,8 @@ void BioFormatsImageIO::ReadImageInformation()
   MetaDataDictionary & dict = this->GetMetaDataDictionary();
 
   // we have one thing per line
-  int p0 = 0;
-  int p1 = 0;
+  size_t p0 = 0;
+  size_t p1 = 0;
   std::string line;
   while( p0 < imgInfo.size() )
     {
@@ -281,7 +281,36 @@ void BioFormatsImageIO::ReadImageInformation()
     // store the values in the dictionary
     if( type == "string" )
       {
-      EncapsulateMetaData< std::string >( dict, key, value );
+      std::string tmp;
+      // we have to unescape \\ and \n
+      size_t lp0 = 0;
+      size_t lp1 = 0;
+      while( lp0 < value.size() )
+        {
+        lp1 = value.find( "\\", lp0 );
+        if( lp1 == std::string::npos )
+          {
+          tmp += value.substr( lp0, value.size()-lp0 );
+          lp0 = value.size();
+          }
+        else
+          {
+          tmp += value.substr( lp0, lp1-lp0 );
+          if( lp1 < value.size() - 1 )
+            {
+            if( value[lp1+1] == '\\' )
+              {
+              tmp += '\\';
+              }
+            else if( value[lp1+1] == 'n' )
+              {
+              tmp += '\n';
+              }
+            }
+          lp0 = lp1 + 2;
+          }
+        }
+      EncapsulateMetaData< std::string >( dict, key, tmp );
       }
     else if( type == "bool" )
       {

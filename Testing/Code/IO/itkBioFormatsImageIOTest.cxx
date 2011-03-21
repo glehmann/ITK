@@ -24,6 +24,7 @@
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkImage.h"
+#include "itkMetaDataObject.h"
 
 #if defined(ITK_USE_MODULAR_BUILD)
   #define SPECIFIC_IMAGEIO_MODULE_TEST
@@ -75,6 +76,10 @@ int itkBioFormatsImageIOTest( int argc, char * argv [] )
     std::cerr << e << std::endl;
     return EXIT_FAILURE;
     }
+
+  std::string notes;
+  itk::ExposeMetaData<std::string>( reader->GetMetaDataDictionary(), "Recording #1 Notes", notes );
+  std::cout << "Notes: " << notes << std::endl;
 
   return EXIT_SUCCESS;
 }

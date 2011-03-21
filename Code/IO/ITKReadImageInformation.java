@@ -4,6 +4,10 @@ import loci.formats.*;
 import loci.formats.meta.MetadataRetrieve;
 import loci.formats.meta.MetadataStore;
 import java.io.FileOutputStream;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
 
 public final class ITKReadImageInformation {
 
@@ -96,6 +100,53 @@ public final class ITKReadImageInformation {
     System.out.println( "PixelsPhysicalSizeZ(real): " + (meta.getPixelsPhysicalSizeZ(0)==null? 1.0: meta.getPixelsPhysicalSizeZ(0)) );
     System.out.println( "PixelsPhysicalSizeT(real): " + (meta.getPixelsTimeIncrement(0)==null? 1.0: meta.getPixelsTimeIncrement(0)) );
     System.out.println( "PixelsPhysicalSizeC(real): " + 1.0 ); // should we give something more useful for this one?
+
+    HashMap<String, Object> metadata = new HashMap<String, Object>();
+    metadata.putAll( reader.getGlobalMetadata() );
+    metadata.putAll( reader.getSeriesMetadata() );
+    Set entries = metadata.entrySet();
+    Iterator it = entries.iterator();
+    while (it.hasNext()) {
+      Map.Entry entry = (Map.Entry) it.next();
+
+      String key = (String)entry.getKey();
+      Object value = entry.getValue();
+
+      // clean up the key name
+      key = key.replace('(', ' ');
+      key = key.replace(')', ' ');
+      key = key.replace(':', ' ');
+
+      String type;
+      if( value instanceof Double )
+        {
+        type = "real";
+        }
+      else if( value instanceof Long )
+        {
+        type = "int";
+        }
+      else if( value instanceof Integer )
+        {
+        type = "int";
+        }
+      else if( value instanceof Boolean )
+        {
+        type = "bool";
+        }
+      else if( value instanceof String )
+        {
+        // remove the line return
+        value = ((String)value).replace("\\", "\\\\").replace("\n", "\\n");
+        type = "string";
+        }
+      else
+        {
+        // defaults to string
+        type = "string";
+        }
+      System.out.println( entry.getKey() + "("+type+"): " + value );
+    }
 
     return true;
   }
