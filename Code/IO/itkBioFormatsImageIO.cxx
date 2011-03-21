@@ -67,6 +67,7 @@ See slicer-license.txt for Slicer3's licensing information.
 
 #include "itkBioFormatsImageIO.h"
 #include "itkIOCommon.h"
+#include "itkMetaDataObject.h"
 #include "itkExceptionObject.h"
 #include "itksys/Process.h"
 
@@ -256,70 +257,119 @@ void BioFormatsImageIO::ReadImageInformation()
 
   this->SetNumberOfDimensions(5);
 
+  // fill the metadata dictionary
+  MetaDataDictionary & dict = this->GetMetaDataDictionary();
+
   // we have one thing per line
   int p0 = 0;
   int p1 = 0;
   std::string line;
-  // is little endian?
-  p1 = imgInfo.find("\n", p0);
-  line = imgInfo.substr( p0, p1 );
-  if( valueOf<bool>(line) )
+  while( p0 < imgInfo.size() )
     {
-    SetByteOrderToLittleEndian(); // m_ByteOrder
+    // get the current line
+    p1 = imgInfo.find("\n", p0);
+    line = imgInfo.substr( p0, p1-p0 );
+
+    // get the 3 parts of the line
+    int sep1 = line.find("(");
+    int sep2 = line.find("):");
+    std::string key = line.substr( 0, sep1 );
+    std::string type = line.substr( sep1+1, sep2-sep1-1 );
+    std::string value = line.substr( sep2+3, line.size()-sep2-1 );
+    // std::cout << "===" << name << "=" << type << "=" << value << "===" << std::endl;
+
+    // store the values in the dictionary
+    if( type == "string" )
+      {
+      EncapsulateMetaData< std::string >( dict, key, value );
+      }
+    else if( type == "bool" )
+      {
+      EncapsulateMetaData< bool >( dict, key, valueOf<bool>(value) );
+      }
+    else if( type == "int" )
+      {
+      EncapsulateMetaData< long >( dict, key, valueOf<long>(value) );
+      }
+    else if( type == "real" )
+      {
+      EncapsulateMetaData< double >( dict, key, valueOf<double>(value) );
+      }
+    else if( type == "enum" )
+      {
+      EncapsulateMetaData< int >( dict, key, valueOf<int>(value) );
+      }
+
+    // go to the next line
+    p0 = p1+1;
+    }
+
+  // set the values needed by the reader
+  std::string s;
+  bool b;
+  long i;
+  double r;
+  int e;
+
+  // is little endian?
+  ExposeMetaData<bool>( dict, "LittleEndian", b );
+  if( b )
+    {
+    SetByteOrderToLittleEndian();
     }
   else
     {
-    SetByteOrderToBigEndian(); // m_ByteOrder
+    SetByteOrderToBigEndian();
     }
+
   // component type
-  p0 = p1+1;
-  p1 = imgInfo.find("\n", p0);
-  line = imgInfo.substr( p0, p1 );
-  int componentType = valueOf<int>(line);
-  if( componentType == UNKNOWNCOMPONENTTYPE)
+  ExposeMetaData<int>( dict, "PixelType", e );
+  if( e == UNKNOWNCOMPONENTTYPE)
     {
     itkExceptionMacro("Unknown pixel type:");
     }
-  SetComponentType( (itk::ImageIOBase::IOComponentType)componentType );
+  SetComponentType( (itk::ImageIOBase::IOComponentType)e );
+
   // x, y, z, t, c
-  for( int i=0; i<5; i++ )
-    {
-    p0 = p1+1;
-    p1 = imgInfo.find("\n", p0);
-    line = imgInfo.substr( p0, p1 );
-    this->SetDimensions( i, valueOf<int>(line) );
-    }
+  ExposeMetaData<long>( dict, "SizeX", i );
+  this->SetDimensions( 0, i );
+  ExposeMetaData<long>( dict, "SizeY", i );
+  this->SetDimensions( 1, i );
+  ExposeMetaData<long>( dict, "SizeZ", i );
+  this->SetDimensions( 2, i );
+  ExposeMetaData<long>( dict, "SizeT", i );
+  this->SetDimensions( 3, i );
+  ExposeMetaData<long>( dict, "SizeC", i );
+  this->SetDimensions( 4, i );
+
   // number of components
-  p0 = p1+1;
-  p1 = imgInfo.find("\n", p0);
-  line = imgInfo.substr( p0, p1 );
-  int nbOfComponents = valueOf<int>(line);
-  if( nbOfComponents == 1 )
+  ExposeMetaData<long>( dict, "RGBChannelCount", i );
+  if( i == 1 )
     {
-    SetPixelType( SCALAR );
+    this->SetPixelType( SCALAR );
     }
-  else if( nbOfComponents == 3 )
+  else if( i == 3 )
     {
-    SetPixelType( RGB );
+    this->SetPixelType( RGB );
     }
   else
     {
-    SetPixelType( VECTOR );
+    this->SetPixelType( VECTOR );
     }
-  SetNumberOfComponents( nbOfComponents ); // m_NumberOfComponents
+  this->SetNumberOfComponents( i );
+
   // spacing
-  for( int i=0; i<5; i++ )
-    {
-    p0 = p1+1;
-    p1 = imgInfo.find("\n", p0);
-    line = imgInfo.substr( p0, p1 );
-    double s = valueOf<double>(line);
-    if( s == 0.0 )
-      {
-      s = 1.0;
-      }
-    this->SetSpacing( i, s );
-    }
+  ExposeMetaData<double>( dict, "PixelsPhysicalSizeX", r );
+  this->SetSpacing( 0, r );
+  ExposeMetaData<double>( dict, "PixelsPhysicalSizeY", r );
+  this->SetSpacing( 1, r );
+  ExposeMetaData<double>( dict, "PixelsPhysicalSizeZ", r );
+  this->SetSpacing( 2, r );
+  ExposeMetaData<double>( dict, "PixelsPhysicalSizeT", r );
+  this->SetSpacing( 3, r );
+  ExposeMetaData<double>( dict, "PixelsPhysicalSizeC", r );
+  this->SetSpacing( 4, r );
+
 }
 
 void BioFormatsImageIO::Read(void* pData)

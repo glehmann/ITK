@@ -1,26 +1,3 @@
-//
-// ImageConverter.java
-//
-
-/*
-OME Bio-Formats package for reading and converting biological file formats.
-Copyright (C) 2005-@year@ UW-Madison LOCI and Glencoe Software, Inc.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
 
 import java.io.IOException;
 import loci.formats.*;
@@ -28,13 +5,6 @@ import loci.formats.meta.MetadataRetrieve;
 import loci.formats.meta.MetadataStore;
 import java.io.FileOutputStream;
 
-/**
- * ImageConverter is a utility class for converting a file between formats.
- *
- * <dl><dt><b>Source code:</b></dt>
- * <dd><a href="https://skyking.microscopy.wisc.edu/trac/java/browser/trunk/loci/formats/tools/ImageConverter.java">Trac</a>,
- * <a href="https://skyking.microscopy.wisc.edu/svn/java/trunk/loci/formats/tools/ImageConverter.java">SVN</a></dd></dl>
- */
 public final class ITKReadImageInformation {
 
   // -- Constructor --
@@ -66,7 +36,7 @@ public final class ITKReadImageInformation {
    // now print the informations
 
    // little endian?
-    System.out.println( reader.isLittleEndian()? 1:0 );
+    System.out.println( "LittleEndian(bool): " + (reader.isLittleEndian()? 1:0) );
 
     // component type
     // set ITK component type
@@ -108,24 +78,24 @@ public final class ITKReadImageInformation {
       {
       itkComponentType = 0;
       }
-    System.out.println( itkComponentType );
+    System.out.println( "PixelType(enum): " + itkComponentType );
 
     // x, y, z, t, c
-    System.out.println( reader.getSizeX() );
-    System.out.println( reader.getSizeY() );
-    System.out.println( reader.getSizeZ() );
-    System.out.println( reader.getSizeT() );
-    System.out.println( reader.getEffectiveSizeC() ); // reader.getSizeC()
+    System.out.println( "SizeX(int): " + reader.getSizeX() );
+    System.out.println( "SizeY(int): " + reader.getSizeY() );
+    System.out.println( "SizeZ(int): " + reader.getSizeZ() );
+    System.out.println( "SizeT(int): " + reader.getSizeT() );
+    System.out.println( "SizeC(int): " + reader.getEffectiveSizeC() ); // reader.getSizeC()
 
     // number of components
-    System.out.println( reader.getRGBChannelCount() );
+    System.out.println( "RGBChannelCount(int): " + reader.getRGBChannelCount() );
 
     // spacing
-    System.out.println( meta.getPixelsPhysicalSizeX(0) );
-    System.out.println( meta.getPixelsPhysicalSizeY(0) );
-    System.out.println( meta.getPixelsPhysicalSizeZ(0) );
-    System.out.println( meta.getPixelsTimeIncrement(0) );
-    System.out.println( 1.0 ); // should we give something more useful for this one?
+    System.out.println( "PixelsPhysicalSizeX(real): " + (meta.getPixelsPhysicalSizeX(0)==null? 1.0: meta.getPixelsPhysicalSizeX(0)) );
+    System.out.println( "PixelsPhysicalSizeY(real): " + (meta.getPixelsPhysicalSizeY(0)==null? 1.0: meta.getPixelsPhysicalSizeY(0)) );
+    System.out.println( "PixelsPhysicalSizeZ(real): " + (meta.getPixelsPhysicalSizeZ(0)==null? 1.0: meta.getPixelsPhysicalSizeZ(0)) );
+    System.out.println( "PixelsPhysicalSizeT(real): " + (meta.getPixelsTimeIncrement(0)==null? 1.0: meta.getPixelsTimeIncrement(0)) );
+    System.out.println( "PixelsPhysicalSizeC(real): " + 1.0 ); // should we give something more useful for this one?
 
     return true;
   }
