@@ -23,7 +23,7 @@
 #include "itkBioFormatsImageIO.h"
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
-#include "itkImage.h"
+#include "itkVectorImage.h"
 #include "itkMetaDataObject.h"
 #include "itkStreamingImageFilter.h"
 
@@ -31,7 +31,7 @@
   #define SPECIFIC_IMAGEIO_MODULE_TEST
 #endif
 
-int itkBioFormatsImageIOTest( int argc, char * argv [] )
+int itkVectorImageBioFormatsImageIOTest( int argc, char * argv [] )
 {
   if( argc < 3)
     {
@@ -42,7 +42,7 @@ int itkBioFormatsImageIOTest( int argc, char * argv [] )
   typedef unsigned char       PixelType;
   const unsigned int          Dimension = 3;
 
-  typedef itk::Image< PixelType, Dimension >   ImageType;
+  typedef itk::VectorImage< PixelType, Dimension >   ImageType;
 
   typedef itk::ImageFileReader<ImageType> ReaderType;
 

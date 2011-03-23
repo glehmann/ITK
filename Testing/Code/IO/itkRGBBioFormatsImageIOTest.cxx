@@ -24,6 +24,7 @@
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkImage.h"
+#include "itkRGBPixel.h"
 #include "itkMetaDataObject.h"
 #include "itkStreamingImageFilter.h"
 
@@ -31,7 +32,7 @@
   #define SPECIFIC_IMAGEIO_MODULE_TEST
 #endif
 
-int itkBioFormatsImageIOTest( int argc, char * argv [] )
+int itkRGBBioFormatsImageIOTest( int argc, char * argv [] )
 {
   if( argc < 3)
     {
@@ -39,8 +40,8 @@ int itkBioFormatsImageIOTest( int argc, char * argv [] )
     return EXIT_FAILURE;
     }
 
-  typedef unsigned char       PixelType;
-  const unsigned int          Dimension = 3;
+  typedef itk::RGBPixel<unsigned char>       PixelType;
+  const unsigned int                         Dimension = 3;
 
   typedef itk::Image< PixelType, Dimension >   ImageType;
 

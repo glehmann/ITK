@@ -22,7 +22,7 @@ public final class ITKReadImageInformation {
     throws FormatException, IOException
   {
     IFormatReader reader = new ImageReader();
-    reader = new ChannelSeparator(reader);
+//    reader = new ChannelSeparator(reader);
 
     reader.setMetadataFiltered(true);
     reader.setOriginalMetadataPopulated(true);
@@ -133,6 +133,15 @@ public final class ITKReadImageInformation {
       else if( value instanceof Boolean )
         {
         type = "bool";
+        // don't print false or true, but 0 or 1
+        if( ((Boolean)value).booleanValue() )
+          {
+          value = new Integer(1);
+          }
+        else
+          {
+          value = new Integer(0);
+          }
         }
       else if( value instanceof String )
         {

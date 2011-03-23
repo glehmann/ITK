@@ -151,6 +151,8 @@ set(KitTests
 if(ITKIO_SUPPORTS_BIOFORMATS_IMAGEIO)
   set(KitTests ${KitTests}
     itkBioFormatsImageIOTest
+    itkRGBBioFormatsImageIOTest
+    itkVectorImageBioFormatsImageIOTest
     )
 endif()
 

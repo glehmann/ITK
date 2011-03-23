@@ -65,7 +65,7 @@ See slicer-license.txt for Slicer3's licensing information.
 #define __itkBioFormatsImageIO_h
 
 // ITK includes
-#include "itkImageIOBase.h"
+#include "itkStreamingImageIOBase.h"
 #include <sstream>
 #include <iostream>
 
@@ -82,11 +82,11 @@ namespace itk
  * \warning Note that the Bio-Format Java library is distributed under a GPLv2
  * license. For details, see http://www.loci.wisc.edu/software/bio-formats
  */
-class ITKIO_EXPORT BioFormatsImageIO : public ImageIOBase
+class ITKIO_EXPORT BioFormatsImageIO : public StreamingImageIOBase
 {
 public:
   typedef BioFormatsImageIO           Self;
-  typedef ImageIOBase                 Superclass;
+  typedef StreamingImageIOBase        Superclass;
   typedef SmartPointer<Self>          Pointer;
   typedef SmartPointer<const Self>    ConstPointer;
 
@@ -113,6 +113,8 @@ protected:
   BioFormatsImageIO();
   ~BioFormatsImageIO();
 
+  virtual SizeType GetHeaderSize() const { return 0; }
+
 private:
   std::string m_JavaCommand;
   std::string m_ClassPath;
@@ -121,9 +123,21 @@ private:
   ReturnType valueOf( const std::string &s )
   {
     ReturnType res;
-    std::istringstream(s) >> res;
+    if( !(std::istringstream(s) >> res) )
+      {
+      itkExceptionMacro(<<"BioFormatsImageIO: error while converting: " << s );
+      }
+    itkDebugMacro(<<"BioFormatsImageIO::valueOf: converting " << s << " to " << res);
     return res;
   }
+
+  template<typename T>
+  std::string toString( const T & Value )
+    {
+    std::ostringstream oss;
+    oss << Value;
+    return oss.str();
+    }
 
   char ** toCArray( std::vector< std::string > & args )
   {

@@ -279,54 +279,62 @@ void BioFormatsImageIO::ReadImageInformation()
     // std::cout << "===" << name << "=" << type << "=" << value << "===" << std::endl;
 
     // store the values in the dictionary
-    if( type == "string" )
+    if( dict.HasKey(key) )
       {
-      std::string tmp;
-      // we have to unescape \\ and \n
-      size_t lp0 = 0;
-      size_t lp1 = 0;
-      while( lp0 < value.size() )
+      itkDebugMacro("BioFormatsImageIO::ReadImageInformation metadata " << key << " = " << value << " ignored because the key is already defined.");
+      }
+    else
+      {
+      if( type == "string" )
         {
-        lp1 = value.find( "\\", lp0 );
-        if( lp1 == std::string::npos )
+        std::string tmp;
+        // we have to unescape \\ and \n
+        size_t lp0 = 0;
+        size_t lp1 = 0;
+        while( lp0 < value.size() )
           {
-          tmp += value.substr( lp0, value.size()-lp0 );
-          lp0 = value.size();
-          }
-        else
-          {
-          tmp += value.substr( lp0, lp1-lp0 );
-          if( lp1 < value.size() - 1 )
+          lp1 = value.find( "\\", lp0 );
+          if( lp1 == std::string::npos )
             {
-            if( value[lp1+1] == '\\' )
-              {
-              tmp += '\\';
-              }
-            else if( value[lp1+1] == 'n' )
-              {
-              tmp += '\n';
-              }
+            tmp += value.substr( lp0, value.size()-lp0 );
+            lp0 = value.size();
             }
-          lp0 = lp1 + 2;
+          else
+            {
+            tmp += value.substr( lp0, lp1-lp0 );
+            if( lp1 < value.size() - 1 )
+              {
+              if( value[lp1+1] == '\\' )
+                {
+                tmp += '\\';
+                }
+              else if( value[lp1+1] == 'n' )
+                {
+                tmp += '\n';
+                }
+              }
+            lp0 = lp1 + 2;
+            }
           }
+        EncapsulateMetaData< std::string >( dict, key, tmp );
         }
-      EncapsulateMetaData< std::string >( dict, key, tmp );
-      }
-    else if( type == "bool" )
-      {
-      EncapsulateMetaData< bool >( dict, key, valueOf<bool>(value) );
-      }
-    else if( type == "int" )
-      {
-      EncapsulateMetaData< long >( dict, key, valueOf<long>(value) );
-      }
-    else if( type == "real" )
-      {
-      EncapsulateMetaData< double >( dict, key, valueOf<double>(value) );
-      }
-    else if( type == "enum" )
-      {
-      EncapsulateMetaData< int >( dict, key, valueOf<int>(value) );
+      else if( type == "bool" )
+        {
+        EncapsulateMetaData< bool >( dict, key, valueOf<bool>(value) );
+        }
+      else if( type == "int" )
+        {
+        EncapsulateMetaData< long >( dict, key, valueOf<long>(value) );
+        }
+      else if( type == "real" )
+        {
+        EncapsulateMetaData< double >( dict, key, valueOf<double>(value) );
+        }
+      else if( type == "enum" )
+        {
+//         itkDebugMacro("BioFormatsImageIO::ReadImageInformation adding enum metadata " << key << " = " << value);
+        EncapsulateMetaData< long >( dict, key, valueOf<long>(value) );
+        }
       }
 
     // go to the next line
@@ -338,7 +346,6 @@ void BioFormatsImageIO::ReadImageInformation()
   bool b;
   long i;
   double r;
-  int e;
 
   // is little endian?
   ExposeMetaData<bool>( dict, "LittleEndian", b );
@@ -352,12 +359,13 @@ void BioFormatsImageIO::ReadImageInformation()
     }
 
   // component type
-  ExposeMetaData<int>( dict, "PixelType", e );
-  if( e == UNKNOWNCOMPONENTTYPE)
+  itkAssertOrThrowMacro( dict.HasKey("PixelType"), "PixelType is not in the metadata dictionary!");
+  ExposeMetaData<long>( dict, "PixelType", i );
+  if( i == UNKNOWNCOMPONENTTYPE)
     {
-    itkExceptionMacro("Unknown pixel type:");
+    itkExceptionMacro("Unknown pixel type: "<< i);
     }
-  SetComponentType( (itk::ImageIOBase::IOComponentType)e );
+  SetComponentType( (itk::ImageIOBase::IOComponentType)i );
 
   // x, y, z, t, c
   ExposeMetaData<long>( dict, "SizeX", i );
@@ -404,6 +412,7 @@ void BioFormatsImageIO::ReadImageInformation()
 void BioFormatsImageIO::Read(void* pData)
 {
   itkDebugMacro("BioFormatsImageIO::Read");
+  const ImageIORegion & region = this->GetIORegion();
 
   std::vector< std::string > args;
   args.push_back( m_JavaCommand );
@@ -411,6 +420,17 @@ void BioFormatsImageIO::Read(void* pData)
   args.push_back( m_ClassPath );
   args.push_back( "ITKRead" );
   args.push_back( m_FileName );
+  for( int d=0; d<region.GetImageDimension(); d++ )
+    {
+    args.push_back( toString(region.GetIndex(d)) );
+    args.push_back( toString(region.GetSize(d)) );
+    }
+  for( int d=region.GetImageDimension(); d<5; d++ )
+    {
+    args.push_back( "0" );
+    args.push_back( "1" );
+    }
+
   // convert to something usable by itksys
   char **argv = toCArray(args);
 
@@ -430,6 +450,10 @@ void BioFormatsImageIO::Read(void* pData)
     {
     if( retcode == itksysProcess_Pipe_STDOUT )
       {
+//      if( pos + pipedatalength > region.GetNumberOfPixels() )
+//        {
+//        itkExceptionMacro(<<"BioFormatsImageIO: internal error: ITKRead sent more data (" << pos + pipedatalength << ") than expected (" << region.GetNumberOfPixels() << ")" << std::endl );
+//        }
       // std::cout << "pos: " << pos << "  reading: " << pipedatalength << std::endl;
       for( long i=0; i<pipedatalength; i++, pos++ )
         {
