@@ -19,8 +19,10 @@
 #define __itkLabelObject_h
 
 #include <deque>
+#include <map>
 #include "itkLightObject.h"
 #include "itkLabelObjectLine.h"
+#include "itkSimpleLabelObjectLine.h"
 #include "itkWeakPointer.h"
 #include "itkObjectFactory.h"
 
@@ -89,16 +91,13 @@ public:
   typedef itk::SizeValueType                 SizeValueType;
 
   itkStaticConstMacro(LABEL, AttributeType, 0);
-
   static AttributeType GetAttributeFromName(const std::string & s);
-
   static std::string GetNameFromAttribute(const AttributeType & a);
 
   /**
    * Set/Get the label associated with the object.
    */
   const LabelType & GetLabel() const;
-
   void SetLabel(const LabelType & label);
 
   /**
@@ -132,9 +131,8 @@ public:
 
   SizeValueType GetNumberOfLines() const;
 
-  const LineType & GetLine(SizeValueType i) const;
-
-  LineType & GetLine(SizeValueType i);
+  // can't be implemented with a reference
+  LineType GetLine(SizeValueType i) const;
 
   /**
    * Returns the number of pixels contained in the object.
@@ -187,19 +185,25 @@ public:
     {
       m_Begin = lo->m_LineContainer.begin();
       m_End = lo->m_LineContainer.end();
-      m_Iterator = m_Begin;
+      m_MapIterator = m_Begin;
+      // todo: initialize m_Line
+      NextValidMapEntry();
     }
 
     ConstLineIterator(const ConstLineIterator & iter)
     {
-      m_Iterator = iter.m_Iterator;
+      m_MapIterator = iter.m_MapIterator;
+      m_DequeIterator = iter.m_DequeIterator;
+      m_Line = iter.m_Line;
       m_Begin = iter.m_Begin;
       m_End = iter.m_End;
     }
 
     ConstLineIterator & operator=(const ConstLineIterator & iter)
     {
-      m_Iterator = iter.m_Iterator;
+      m_MapIterator = iter.m_MapIterator;
+      m_DequeIterator = iter.m_DequeIterator;
+      m_Line = iter.m_Line;
       m_Begin = iter.m_Begin;
       m_End = iter.m_End;
       return *this;
@@ -207,7 +211,7 @@ public:
 
     const LineType & GetLine() const
     {
-      return *m_Iterator;
+      return m_Line;
     }
 
     ConstLineIterator operator++(int)
@@ -219,36 +223,86 @@ public:
 
     ConstLineIterator & operator++()
     {
-      ++m_Iterator;
+      ++m_DequeIterator;
+      if( m_DequeIterator == m_MapIterator->second.end() )
+        {
+        ++m_MapIterator;
+        NextValidMapEntry();
+        }
+      else
+        {
+        IndexType idx = m_Line.GetIndex();
+        idx[0] = m_DequeIterator->GetPosition();
+        m_Line.SetIndex( idx );
+        m_Line.SetLength( m_DequeIterator->GetLength() );
+        }
       return *this;
     }
 
-  bool operator==(const ConstLineIterator & iter) const
+    bool operator==(const ConstLineIterator & iter) const
     {
-    return m_Iterator == iter.m_Iterator && m_Begin == iter.m_Begin && m_End == iter.m_End;
+      return m_MapIterator == iter.m_MapIterator && m_DequeIterator = iter.m_DequeIterator && m_Begin == iter.m_Begin && m_End == iter.m_End;
     }
 
-  bool operator!=(const ConstLineIterator & iter) const
+    bool operator!=(const ConstLineIterator & iter) const
     {
-    return !( *this == iter );
+      return !( *this == iter );
     }
 
-  void GoToBegin()
+    void GoToBegin()
     {
-      m_Iterator = m_Begin;
+      m_MapIterator = m_Begin;
+      NextValidMapEntry();
     }
 
     bool IsAtEnd() const
     {
-      return m_Iterator == m_End;
+      return m_MapIterator == m_End;
     }
 
   private:
-    typedef typename std::deque< LineType >            LineContainerType;
-    typedef typename LineContainerType::const_iterator InternalIteratorType;
-    InternalIteratorType m_Iterator;
-    InternalIteratorType m_Begin;
-    InternalIteratorType m_End;
+    typedef Index< VImageDimension - 1 >       BaseIndexType;
+    typedef SimpleLabelObjectLine              SimpleLineType;
+    typedef typename std::deque< SimpleLineType >
+                                               SimpleLineContainerType;
+    typedef typename std::map< BaseIndexType, SimpleLineContainerType, typename BaseIndexType::LexicographicCompare >
+                                               LineContainerType;
+
+    void NextValidMapEntry()
+    {
+      // search for the next valid position
+      while( m_MapIterator != m_End && ! NextValidDequeEntry() )
+        {
+        m_MapIterator++;
+        }
+    }
+
+    bool NextValidDequeEntry()
+    {
+      if( m_MapIterator->second.empty() )
+        {
+        // the deque is empty - no valid line is there
+        return false;
+        }
+      m_DequeIterator = m_MapIterator->second.begin();
+      // copy the position from the base index
+      IndexType idx;
+      for( int i=1; i<ImageDimension; i++ )
+        {
+        idx[i] = m_MapIterator->first[i-1];
+        }
+      // and the position of the line
+      idx[0] = m_DequeIterator->GetPosition();
+      m_Line.SetIndex( idx );
+      m_Line.SetLength( m_DequeIterator->GetLength() );
+      return true;
+    }
+
+    typename LineContainerType::const_iterator       m_MapIterator;
+    typename LineContainerType::const_iterator       m_Begin;
+    typename LineContainerType::const_iterator       m_End;
+    typename SimpleLineContainerType::const_iterator m_DequeIterator;
+    LineType                                         m_Line;
   };
 
   /** \class ConstLineIterator
@@ -260,17 +314,14 @@ public:
   public:
 
     ConstIndexIterator():
-      m_Iterator(),
-      m_Begin(),
-      m_End()
+      m_Iterator()
         {
         m_Index.Fill(0);
         }
 
     ConstIndexIterator(const Self *lo)
     {
-      m_Begin = lo->m_LineContainer.begin();
-      m_End = lo->m_LineContainer.end();
+      m_Iterator = ConstLineIterator(lo);
       GoToBegin();
     }
 
@@ -278,16 +329,12 @@ public:
     {
       m_Iterator = iter.m_Iterator;
       m_Index = iter.m_Index;
-      m_Begin = iter.m_Begin;
-      m_End = iter.m_End;
     }
 
     ConstIndexIterator & operator=(const ConstIndexIterator & iter)
     {
       m_Iterator = iter.m_Iterator;
       m_Index = iter.m_Index;
-      m_Begin = iter.m_Begin;
-      m_End = iter.m_End;
       return *this;
     }
 
@@ -299,11 +346,14 @@ public:
     ConstIndexIterator & operator++()
     {
       m_Index[0]++;
-      if( m_Index[0] >= m_Iterator->GetIndex()[0] + (OffsetValueType)m_Iterator->GetLength() )
+      if( m_Index[0] >= m_Iterator.GetLine().GetIndex()[0] + (OffsetValueType)m_Iterator.GetLine().GetLength() )
         {
         // we've reached the end of the line - go to the next one
         ++m_Iterator;
-        NextValidLine();
+        if( ! m_Iterator.IsAtEnd() )
+          {
+          m_Index = m_Iterator.GetLine().GetIndex();
+          }
         }
       return *this;
     }
@@ -315,48 +365,32 @@ public:
       return tmp;
     }
 
-    bool operator==(const ConstLineIterator & iter) const
+    bool operator==(const ConstIndexIterator & iter) const
     {
-      return m_Index == iter.m_Index && m_Iterator == iter.m_Iterator && m_Begin == iter.m_Begin && m_End == iter.m_End;
+      return m_Index == iter.m_Index && m_Iterator == iter.m_Iterator;
     }
 
-    bool operator!=(const ConstLineIterator & iter) const
+    bool operator!=(const ConstIndexIterator & iter) const
     {
       return !( *this == iter );
     }
 
     void GoToBegin()
     {
-      m_Iterator = m_Begin;
-      m_Index.Fill(0);
-      NextValidLine();
+      m_Iterator.GoToBegin();
+      if( ! m_Iterator.IsAtEnd() )
+        {
+        m_Index = m_Iterator.GetLine().GetIndex();
+        }
     }
 
     bool IsAtEnd() const
     {
-      return m_Iterator == m_End;
+      return m_Iterator.IsAtEnd();
     }
 
   private:
-
-    typedef typename std::deque< LineType >            LineContainerType;
-    typedef typename LineContainerType::const_iterator InternalIteratorType;
-    void NextValidLine()
-    {
-      // search for the next valid position
-      while( m_Iterator != m_End && m_Iterator->GetLength() == 0 )
-        {
-        ++m_Iterator;
-        }
-      if( m_Iterator != m_End )
-        {
-        m_Index = m_Iterator->GetIndex();
-        }
-    }
-
-    InternalIteratorType m_Iterator;
-    InternalIteratorType m_Begin;
-    InternalIteratorType m_End;
+    ConstLineIterator    m_Iterator;
     IndexType            m_Index;
   };
 
@@ -368,10 +402,24 @@ private:
   LabelObject(const Self &);    //purposely not implemented
   void operator=(const Self &); //purposely not implemented
 
-  typedef typename std::deque< LineType >    LineContainerType;
+  typedef Index< VImageDimension - 1 >       BaseIndexType;
+  typedef SimpleLabelObjectLine              SimpleLineType;
+  typedef typename std::deque< SimpleLineType >
+                                             SimpleLineContainerType;
+  typedef typename std::map< BaseIndexType, SimpleLineContainerType, typename BaseIndexType::LexicographicCompare >
+                                             LineContainerType;
 
-  LineContainerType m_LineContainer;
+  /**
+   * Add a new line to the object, without any check.
+   */
+  void AddLine(const BaseIndexType & idx, const SimpleLineType & line);
+  /** Compute the base index used internally from a standard index */
+  BaseIndexType ComputeBaseIndex( const IndexType & idx ) const;
+
+
   LabelType         m_Label;
+  LineContainerType m_LineContainer;
+  SizeValueType     m_NumberOfLines;
 };
 } // end namespace itk
 

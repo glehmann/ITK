@@ -19,22 +19,24 @@
 #define __itkLabelObject_hxx
 
 #include "itkLabelObject.h"
-#include "itkLabelObjectLineComparator.h"
 #include "vnl/vnl_math.h"
 #include <algorithm>
 
 namespace itk
 {
 template< class TLabel, unsigned int VImageDimension >
-LabelObject< TLabel, VImageDimension >::LabelObject()
+LabelObject< TLabel, VImageDimension >
+::LabelObject()
 {
   m_Label = NumericTraits< LabelType >::Zero;
   m_LineContainer.clear();
+  m_NumberOfLines = 0;
 }
 
 template< class TLabel, unsigned int VImageDimension >
 typename LabelObject< TLabel, VImageDimension >::AttributeType
-LabelObject< TLabel, VImageDimension >::GetAttributeFromName(const std::string & s)
+LabelObject< TLabel, VImageDimension >
+::GetAttributeFromName(const std::string & s)
 {
   if ( s == "Label" )
     {
@@ -63,16 +65,31 @@ LabelObject< TLabel, VImageDimension >
  */
 template< class TLabel, unsigned int VImageDimension >
 const typename LabelObject< TLabel, VImageDimension >::LabelType &
-LabelObject< TLabel, VImageDimension >::GetLabel() const
+LabelObject< TLabel, VImageDimension >
+::GetLabel() const
 {
   return m_Label;
 }
 
 template< class TLabel, unsigned int VImageDimension >
 void
-LabelObject< TLabel, VImageDimension >::SetLabel(const LabelType & label)
+LabelObject< TLabel, VImageDimension >
+::SetLabel(const LabelType & label)
 {
   m_Label = label;
+}
+
+template< class TLabel, unsigned int VImageDimension >
+typename LabelObject< TLabel, VImageDimension >::BaseIndexType
+LabelObject< TLabel, VImageDimension >
+::ComputeBaseIndex( const IndexType & idx ) const
+{
+  BaseIndexType bidx;
+  for( int i=1; i<ImageDimension; i++ )
+    {
+    bidx[i-1] = idx[i];
+    }
+  return bidx;
 }
 
 /**
@@ -81,68 +98,94 @@ LabelObject< TLabel, VImageDimension >::SetLabel(const LabelType & label)
  */
 template< class TLabel, unsigned int VImageDimension >
 bool
-LabelObject< TLabel, VImageDimension >::HasIndex(const IndexType & idx) const
+LabelObject< TLabel, VImageDimension >
+::HasIndex(const IndexType & idx) const
 {
-  for ( typename LineContainerType::const_iterator it = m_LineContainer.begin();
-        it != m_LineContainer.end();
-        it++ )
+  // first search if we have registered this base index
+  BaseIndexType bidx = ComputeBaseIndex(idx);
+  typename LineContainerType::const_iterator it = m_LineContainer.find(bidx);
+  if( it == m_LineContainer.end() )
     {
-    if ( it->HasIndex(idx) )
-      {
-      return true;
-      }
+    return false;
     }
-  return false;
+  SimpleLineType ref( idx[0], 1 );
+  const SimpleLineContainerType & lineContainer = it->second;
+  SimpleLineContainerType::const_iterator it2 = std::lower_bound( lineContainer.begin(), lineContainer.end(), ref );
+  if( it2 == lineContainer.begin() )
+    {
+    // not even in the first line
+    return false;
+    }
+  // move the iterator to the previous line to check if the position is inside
+  --it2;
+  return it2->HasPosition( idx[0] );
 }
 
 
 template< class TLabel, unsigned int VImageDimension >
 bool
-LabelObject< TLabel, VImageDimension >::RemoveIndex(const IndexType & idx)
+LabelObject< TLabel, VImageDimension >
+::RemoveIndex(const IndexType & idx)
 {
-  typename LineContainerType::iterator it = m_LineContainer.begin();
+  // first search if we have registered this base index
+  BaseIndexType bidx = ComputeBaseIndex(idx);
+  typename LineContainerType::iterator mit = m_LineContainer.find(bidx);
+  if( mit == m_LineContainer.end() )
+    {
+    return false;
+    }
   typedef typename IndexType::IndexValueType IndexValueType;
 
-  while( it != m_LineContainer.end() )
+  SimpleLineType ref( idx[0], 1 );
+  SimpleLineContainerType & lineContainer = mit->second;
+  SimpleLineContainerType::iterator it = std::lower_bound( lineContainer.begin(), lineContainer.end(), ref );
+  if( it == lineContainer.begin() )
     {
-    if( it->HasIndex( idx ) )
+    // not in this object
+    return false;
+    }
+  // if the position is in that object, this is necessarily in the previous line
+  --it;
+  if( it->HasPosition( idx[0] ) )
+    {
+    OffsetValueType orgLinePosition = it->GetPosition();
+    LengthType orgLineLength = it->GetLength();
+
+    if( orgLineLength == 1 )
       {
-      IndexType orgLineIndex    = it->GetIndex();
-      LengthType orgLineLength  = it->GetLength();
-
-      if( orgLineLength == 1 )
+      if( lineContainer.size() == 1 )
         {
-        // remove the line and exit
-        m_LineContainer.erase( it );
-        return true;
-        }
-
-      if( orgLineIndex == idx )
-        {
-        // shift the index to the right and decrease the length by one
-        ++orgLineIndex[0];
-        it->SetIndex( orgLineIndex );
-        it->SetLength( orgLineLength - 1 );
-        return true;
-        }
-      else if( orgLineIndex[0] + static_cast< IndexValueType >( orgLineLength ) - 1 == idx[0] )
-        {
-        // decrease the length by one
-        it->SetLength( orgLineLength - 1 );
-        return true;
+        // remove the whole map entry
+        m_LineContainer.erase( mit );
         }
       else
         {
-        // we have to split the line in two parts
-        it->SetLength( idx[0] - orgLineIndex[0] );
-        IndexType newIdx = idx;
-        ++newIdx[0];
-        LengthType newLength = orgLineLength - it->GetLength() - 1;
-        m_LineContainer.push_back( LineType( newIdx, newLength ) );
-        return true;
+        // remove the line and exit
+        lineContainer.erase( it );
         }
+      m_NumberOfLines--;
       }
-    ++it;
+    else if( orgLinePosition == idx[0] )
+      {
+      // shift the index to the right and decrease the length by one
+      it->SetPosition( orgLinePosition + 1 );
+      it->SetLength( orgLineLength - 1 );
+      }
+    else if( orgLinePosition + static_cast< IndexValueType >( orgLineLength ) - 1 == idx[0] )
+      {
+      // decrease the length by one
+      it->SetLength( orgLineLength - 1 );
+      }
+    else
+      {
+      // we have to split the line in two parts
+      it->SetLength( idx[0] - orgLinePosition );
+      OffsetValueType newPosition = idx[0] + 1;
+      LengthType newLength = orgLineLength - it->GetLength() - 1;
+      ++it;  // keep the container ordered
+      lineContainer.insert( it, SimpleLineType( newPosition, newLength ) );
+      }
+    return true;
     }
   return false;
 }
@@ -153,20 +196,26 @@ LabelObject< TLabel, VImageDimension >::RemoveIndex(const IndexType & idx)
  */
 template< class TLabel, unsigned int VImageDimension >
 void
-LabelObject< TLabel, VImageDimension >::AddIndex(const IndexType & idx)
+LabelObject< TLabel, VImageDimension >
+::AddIndex(const IndexType & idx)
 {
-  if ( !m_LineContainer.empty() )
-    {
-    // can we use the last line to add that index ?
-    LineType & lastLine = *m_LineContainer.rbegin();
-    if ( lastLine.IsNextIndex(idx) )
-      {
-      lastLine.SetLength(lastLine.GetLength() + 1);
-      return;
-      }
-    }
-  // create a new line
-  this->AddLine(idx, 1);
+  LineType l( idx, 1 );
+  this->AddLine( l );
+}
+
+/**
+ * Add a new line to the object, without any check.
+ */
+template< class TLabel, unsigned int VImageDimension >
+void
+LabelObject< TLabel, VImageDimension >
+::AddLine(const BaseIndexType & bidx, const SimpleLineType & l)
+{
+  SimpleLineContainerType & ls = m_LineContainer[ bidx ];
+  SimpleLineContainerType::iterator it = std::lower_bound( ls.begin(), ls.end(), l );
+  // TODO: merge the line in the others if there is an overlap
+  ls.insert( it, l );
+  m_NumberOfLines++;
 }
 
 /**
@@ -176,9 +225,10 @@ template< class TLabel, unsigned int VImageDimension >
 void
 LabelObject< TLabel, VImageDimension >::AddLine(const IndexType & idx, const LengthType & length)
 {
-  LineType line(idx, length);
+  BaseIndexType bidx = ComputeBaseIndex(idx);
+  SimpleLineType line(idx[0], length);
 
-  this->AddLine(line);
+  this->AddLine( bidx, line );
 }
 
 /**
@@ -186,31 +236,33 @@ LabelObject< TLabel, VImageDimension >::AddLine(const IndexType & idx, const Len
  */
 template< class TLabel, unsigned int VImageDimension >
 void
-LabelObject< TLabel, VImageDimension >::AddLine(const LineType & line)
+LabelObject< TLabel, VImageDimension >
+::AddLine(const LineType & line)
 {
-  m_LineContainer.push_back(line);
+  this->AddLine( line.GetIndex(), line.GetLength() );
 }
 
 template< class TLabel, unsigned int VImageDimension >
 typename LabelObject< TLabel, VImageDimension >::SizeValueType
 LabelObject< TLabel, VImageDimension >::GetNumberOfLines() const
 {
-  return m_LineContainer.size();
+  return m_NumberOfLines;
 }
 
 template< class TLabel, unsigned int VImageDimension >
-const
-typename LabelObject< TLabel, VImageDimension >::LineType &
+typename LabelObject< TLabel, VImageDimension >::LineType
 LabelObject< TLabel, VImageDimension >::GetLine(SizeValueType i) const
 {
-  return m_LineContainer[i];
-}
-
-template< class TLabel, unsigned int VImageDimension >
-typename LabelObject< TLabel, VImageDimension >::LineType &
-LabelObject< TLabel, VImageDimension >::GetLine(SizeValueType i)
-{
-  return m_LineContainer[i];
+  SizeValueType count = 0;
+  for( ConstLineIterator it(this); ! it.IsAtEnd(); ++it )
+    {
+    if( i == count )
+      {
+      return it.GetLine();
+      }
+    count++;
+    }
+  itkGenericExceptionMacro(<<"Index out of bound");
 }
 
 template< class TLabel, unsigned int VImageDimension >
@@ -219,11 +271,16 @@ LabelObject< TLabel, VImageDimension >::Size() const
 {
   int size = 0;
 
-  for ( typename LineContainerType::const_iterator it = m_LineContainer.begin();
-        it != m_LineContainer.end();
-        it++ )
+  for( typename LineContainerType::const_iterator mit = m_LineContainer.begin();
+       mit != m_LineContainer.end();
+       mit++ )
     {
-    size += it->GetLength();
+    for ( typename SimpleLineContainerType::const_iterator it = mit->second.begin();
+          it != mit->second.end();
+          it++ )
+      {
+      size += it->GetLength();
+      }
     }
   return size;
 }
@@ -241,24 +298,33 @@ LabelObject< TLabel, VImageDimension >::GetIndex(SizeValueType offset) const
 {
   SizeValueType o = offset;
 
-  typename LineContainerType::const_iterator it = this->m_LineContainer.begin();
-
-  while ( it != m_LineContainer.end() )
+  for( typename LineContainerType::const_iterator mit = m_LineContainer.begin();
+       mit != m_LineContainer.end();
+       mit++ )
     {
-    SizeValueType size = it->GetLength();
+    typename SimpleLineContainerType::const_iterator it = mit->second.begin();
 
-    if ( o >= size )
+    while ( it != mit->second.end() )
       {
-      o -= size;
-      }
-    else
-      {
-      IndexType idx = it->GetIndex();
-      idx[0] += o;
-      return idx;
-      }
+      SizeValueType size = it->GetLength();
 
-    it++;
+      if ( o >= size )
+        {
+        o -= size;
+        }
+      else
+        {
+        IndexType idx;
+        idx[0] = it->GetPosition() + o;
+        for( int i=1; i<ImageDimension; i++)
+          {
+          idx[i] = mit->first[i-1];
+          }
+        return idx;
+        }
+
+      it++;
+      }
     }
   itkGenericExceptionMacro(<< "Invalid offset: " << offset);
 }
@@ -290,60 +356,64 @@ template< class TLabel, unsigned int VImageDimension >
 void
 LabelObject< TLabel, VImageDimension >::Optimize()
 {
-  if ( !m_LineContainer.empty() )
+  // TODO: remove everything here
+  typename LineContainerType::iterator mit = m_LineContainer.begin();
+  while( mit != m_LineContainer.end() )
     {
-    // first copy the lines in another container and clear the current one
-    LineContainerType lineContainer = m_LineContainer;
-    m_LineContainer.clear();
-
-    // reorder the lines
-    typename Functor::LabelObjectLineComparator< LineType > comparator;
-    std::sort(lineContainer.begin(), lineContainer.end(), comparator);
-
-    // then check the lines consistancy
-    // we'll proceed line index by line index
-    IndexType currentIdx = lineContainer.begin()->GetIndex();
-    LengthType  currentLength = lineContainer.begin()->GetLength();
-
-    typename LineContainerType::const_iterator it = lineContainer.begin();
-
-    while ( it != lineContainer.end() )
+    if ( mit->second.empty() )
       {
-      const LineType & line = *it;
-      IndexType        idx = line.GetIndex();
-      LengthType    length = line.GetLength();
-
-      // check the index to be sure that we are still in the same line idx
-      bool sameIdx = true;
-      for ( unsigned int i = 1; i < ImageDimension; i++ )
-        {
-        if ( currentIdx[i] != idx[i] )
-          {
-          sameIdx = false;
-          }
-        }
-
-      // try to extend the current line idx, or create a new line
-      if ( sameIdx && currentIdx[0] + (OffsetValueType)currentLength >= idx[0] )
-        {
-        // we may expand the line
-        LengthType newLength = idx[0] + (OffsetValueType)length - currentIdx[0];
-        currentLength = vnl_math_max(newLength, currentLength);
-        }
-      else
-        {
-        // add the previous line to the new line container and use the new line
-        // index and size
-        this->AddLine(currentIdx, currentLength);
-        currentIdx = idx;
-        currentLength = length;
-        }
-
-      it++;
+      typename LineContainerType::iterator toRemove = mit;
+      mit++;
+      m_LineContainer.erase( toRemove );
       }
+    else
+      {
+      // first copy the lines in another container and clear the current one
+      SimpleLineContainerType lineContainer = mit->second;
+      mit->second.clear();
 
-    // complete the last line
-    this->AddLine(currentIdx, currentLength);
+      // reorder the lines
+      std::sort(lineContainer.begin(), lineContainer.end());
+
+      // then check the lines consistancy
+      // we'll proceed line index by line index
+      typedef typename SimpleLabelObjectLine::PositionType PositionType;
+      PositionType currentPos = lineContainer.begin()->GetPosition();
+      LengthType currentLength = lineContainer.begin()->GetLength();
+
+      typename SimpleLineContainerType::const_iterator it = lineContainer.begin();
+
+      while ( it != lineContainer.end() )
+        {
+        const SimpleLineType & line = *it;
+        PositionType pos = line.GetPosition();
+        LengthType length = line.GetLength();
+
+        // try to extend the current line idx, or create a new line
+        if ( currentPos + (OffsetValueType)currentLength >= pos )
+          {
+          // we may expand the line
+          LengthType newLength = pos + (OffsetValueType)length - currentPos;
+          currentLength = vnl_math_max(newLength, currentLength);
+          }
+        else
+          {
+          // add the previous line to the new line container and use the new line
+          // index and size
+          SimpleLabelObjectLine l(currentPos, currentLength);
+          mit->second.push_back( l );
+          currentPos = pos;
+          currentLength = length;
+          }
+
+        it++;
+        }
+
+      // complete the last line
+      SimpleLabelObjectLine l(currentPos, currentLength);
+      mit->second.push_back( l );
+      }
+    mit++;
     }
 }
 
@@ -352,12 +422,62 @@ void
 LabelObject< TLabel, VImageDimension >
 ::Shift( OffsetType offset )
 {
-  for( typename LineContainerType::iterator it = m_LineContainer.begin();
-       it != m_LineContainer.end();
-       it++ )
+  bool offsetOn0Only = true;
+  for( int i=1; i<ImageDimension; i++ )
     {
-    LineType & line = *it;
-    line.SetIndex( line.GetIndex() + offset );
+    if( offset[i] != 0 )
+      {
+      offsetOn0Only = false;
+      }
+    }
+  if( offsetOn0Only && offset[0] == 0 )
+    {
+    // nothing to do
+    return;
+    }
+  if( offsetOn0Only )
+    {
+    // we can simply iterate over all the lines and shift the line position
+    for( typename LineContainerType::iterator mit = m_LineContainer.begin();
+         mit != m_LineContainer.end();
+         mit++ )
+      {
+      for( typename SimpleLineContainerType::iterator it = mit->second.begin();
+           it != mit->second.end();
+           it++ )
+        {
+        SimpleLineType & line = *it;
+        line.SetPosition( line.GetPosition() + offset[0] );
+        }
+      }
+    }
+  else
+    {
+    // the base indexes are shifted - we have to recreate the map
+    LineContainerType lineContainer = m_LineContainer;
+    m_LineContainer.clear();
+    for( typename LineContainerType::iterator mit = lineContainer.begin();
+         mit != lineContainer.end();
+         mit++ )
+      {
+      BaseIndexType bidx = mit->first;
+      // shift the base index
+      for( int i=0; i<ImageDimension-1; i++ )
+        {
+        bidx[0] += offset[i+1];
+        }
+      // get a new line container for that base index
+      SimpleLineContainerType & ls = lineContainer[bidx];
+      // and copy the shifted lines there
+      for( typename SimpleLineContainerType::iterator it = mit->second.begin();
+           it != mit->second.end();
+           it++ )
+        {
+        SimpleLineType & line = *it;
+        line.SetPosition( line.GetPosition() + offset[0] );
+        ls.push_back( line );
+        }
+      }
     }
 }
 
@@ -367,6 +487,7 @@ LabelObject< TLabel, VImageDimension >
 ::Clear()
 {
   m_LineContainer.clear();
+  m_NumberOfLines = 0;
 }
 
 template< class TLabel, unsigned int VImageDimension >
