@@ -16,13 +16,13 @@
  *
  *=========================================================================*/
 
-#include "itkOtsuThresholdImageFilter.h"
+#include "itkMomentsThresholdImageFilter.h"
 
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkFilterWatcher.h"
 
-int itkOtsuThresholdImageFilterTest(int argc, char* argv[] )
+int itkMomentsThresholdImageFilterTest(int argc, char* argv[] )
 {
   if( argc < 4 )
     {
@@ -39,7 +39,7 @@ int itkOtsuThresholdImageFilterTest(int argc, char* argv[] )
   typedef itk::Image< InputPixelType,  2 >   InputImageType;
   typedef itk::Image< OutputPixelType, 2 >   OutputImageType;
 
-  typedef itk::OtsuThresholdImageFilter<
+  typedef itk::MomentsThresholdImageFilter<
                InputImageType, OutputImageType >  FilterType;
 
   typedef itk::ImageFileReader< InputImageType >  ReaderType;
