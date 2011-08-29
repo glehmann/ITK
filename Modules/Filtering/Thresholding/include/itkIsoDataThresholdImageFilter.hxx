@@ -2,6 +2,7 @@
 #define __itkIsoDataThresholdImageFilter_hxx
 #include "itkIsoDataThresholdImageFilter.h"
 
+#include "itkImageToHistogramFilter.h"
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkIsoDataThresholdImageCalculator.h"
 #include "itkProgressAccumulator.h"
@@ -26,27 +27,34 @@ IsoDataThresholdImageFilter<TInputImage, TOutputImage>
   typename ProgressAccumulator::Pointer progress = ProgressAccumulator::New();
   progress->SetMiniPipelineFilter(this);
 
+  typedef itk::Statistics::ImageToHistogramFilter<InputImageType> HistogramGeneratorType;
+  typedef typename HistogramGeneratorType::HistogramType          HistogramType;
+  typename HistogramGeneratorType::Pointer histogramGenerator = HistogramGeneratorType::New();
+  histogramGenerator->SetInput( this->GetInput() );
+  histogramGenerator->SetNumberOfBins( this->GetNumberOfHistogramBins() );
+  histogramGenerator->SetNumberOfThreads( this->GetNumberOfThreads() );
+  progress->RegisterInternalFilter(histogramGenerator,.4f);
+
   // Compute the IsoData Threshold for the input image
-  typename IsoDataThresholdImageCalculator<TInputImage>::Pointer calculator =
-    IsoDataThresholdImageCalculator<TInputImage>::New();
-  calculator->SetImage (this->GetInput());
-  calculator->SetNumberOfHistogramBins (m_NumberOfHistogramBins);
-  calculator->Compute();
-  m_Threshold = calculator->GetThreshold();
+  typedef IsoDataThresholdImageCalculator<HistogramType> CalculatorType;
+  typename CalculatorType::Pointer calculator = CalculatorType::New();
+  calculator->SetInput( histogramGenerator->GetOutput() );
+  calculator->SetNumberOfThreads( this->GetNumberOfThreads() );
+  progress->RegisterInternalFilter(calculator,.2f);
 
-  typename BinaryThresholdImageFilter<TInputImage,TOutputImage>::Pointer threshold =
-    BinaryThresholdImageFilter<TInputImage,TOutputImage>::New();
-
-  progress->RegisterInternalFilter(threshold,.5f);
-  threshold->GraftOutput (this->GetOutput());
+  typedef BinaryThresholdImageFilter<TInputImage,TOutputImage> ThresholderType;
+  typename ThresholderType::Pointer thresholder = ThresholderType::New();
   threshold->SetInput (this->GetInput());
-  threshold->SetLowerThreshold(NumericTraits<InputPixelType>::NonpositiveMin());
-  threshold->SetUpperThreshold(calculator->GetThreshold());
-  threshold->SetInsideValue (m_InsideValue);
-  threshold->SetOutsideValue (m_OutsideValue);
-  threshold->Update();
+  thresholder->SetLowerThreshold(NumericTraits<InputPixelType>::NonpositiveMin());
+  thresholder->SetUpperThresholdInput( calculator->GetOutput() );
+  thresholder->SetInsideValue( this->GetInsideValue() );
+  thresholder->SetOutsideValue( this->GetOutsideValue() );
+  thresholder->SetNumberOfThreads( this->GetNumberOfThreads() );
+  progress->RegisterInternalFilter(threshold,.4f);
 
-  this->GraftOutput(threshold->GetOutput());
+  thresholder->GraftOutput( this->GetOutput() );
+  threshold->Update();
+  this->GraftOutput( threshold->GetOutput() );
 }
 
 template<class TInputImage, class TOutputImage>
