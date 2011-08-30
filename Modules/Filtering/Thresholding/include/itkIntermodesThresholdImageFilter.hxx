@@ -2,8 +2,9 @@
 #define __itkIntermodesThresholdImageFilter_hxx
 #include "itkIntermodesThresholdImageFilter.h"
 
+#include "itkImageToHistogramFilter.h"
 #include "itkBinaryThresholdImageFilter.h"
-#include "itkIntermodesThresholdImageCalculator.h"
+#include "itkIntermodesThresholdCalculator.h"
 #include "itkProgressAccumulator.h"
 
 namespace itk {
@@ -15,8 +16,7 @@ IntermodesThresholdImageFilter<TInputImage, TOutputImage>
   m_OutsideValue   = NumericTraits<OutputPixelType>::Zero;
   m_InsideValue    = NumericTraits<OutputPixelType>::max();
   m_Threshold      = NumericTraits<InputPixelType>::Zero;
-  m_NumberOfHistogramBins = 128;
-  m_MaxSmoothingIterations = 10000;
+  m_MaximumSmoothingIterations = 10000;
   m_UseInterMode = true;
 }
 
@@ -28,29 +28,37 @@ IntermodesThresholdImageFilter<TInputImage, TOutputImage>
   typename ProgressAccumulator::Pointer progress = ProgressAccumulator::New();
   progress->SetMiniPipelineFilter(this);
 
+  typedef itk::Statistics::ImageToHistogramFilter<InputImageType> HistogramGeneratorType;
+  typedef typename HistogramGeneratorType::HistogramType          HistogramType;
+  typename HistogramGeneratorType::Pointer histogramGenerator = HistogramGeneratorType::New();
+  histogramGenerator->SetInput( this->GetInput() );
+  // histogramGenerator->SetAutoMinimumMaximum( true );
+  histogramGenerator->SetNumberOfThreads( this->GetNumberOfThreads() );
+  progress->RegisterInternalFilter(histogramGenerator,.4f);
+
   // Compute the Intermodes Threshold for the input image
-  typename IntermodesThresholdImageCalculator<TInputImage>::Pointer calculator =
-    IntermodesThresholdImageCalculator<TInputImage>::New();
-  calculator->SetImage (this->GetInput());
-  calculator->SetNumberOfHistogramBins(m_NumberOfHistogramBins);
-  calculator->SetMaxSmoothingIterations(m_MaxSmoothingIterations);
-  calculator->SetUseInterMode(m_UseInterMode);
-  calculator->Compute();
-  m_Threshold = calculator->GetThreshold();
+  typedef IntermodesThresholdCalculator<HistogramType, InputPixelType> CalculatorType;
+  typename CalculatorType::Pointer calculator = CalculatorType::New();
+  calculator->SetInput( histogramGenerator->GetOutput() );
+  calculator->SetNumberOfThreads( this->GetNumberOfThreads() );
+  calculator->SetMaximumSmoothingIterations( m_MaximumSmoothingIterations );
+  calculator->SetUseInterMode( m_UseInterMode );
+  progress->RegisterInternalFilter(calculator,.2f);
 
-  typename BinaryThresholdImageFilter<TInputImage,TOutputImage>::Pointer threshold =
-    BinaryThresholdImageFilter<TInputImage,TOutputImage>::New();
+  typedef BinaryThresholdImageFilter<TInputImage,TOutputImage> ThresholderType;
+  typename ThresholderType::Pointer thresholder = ThresholderType::New();
+  thresholder->SetInput(this->GetInput());
+  thresholder->SetLowerThreshold( NumericTraits<InputPixelType>::NonpositiveMin() );
+  thresholder->SetUpperThresholdInput( calculator->GetOutput() );
+  thresholder->SetInsideValue( this->GetInsideValue() );
+  thresholder->SetOutsideValue( this->GetOutsideValue() );
+  thresholder->SetNumberOfThreads( this->GetNumberOfThreads() );
+  progress->RegisterInternalFilter(thresholder,.4f);
 
-  progress->RegisterInternalFilter(threshold,.5f);
-  threshold->GraftOutput (this->GetOutput());
-  threshold->SetInput (this->GetInput());
-  threshold->SetLowerThreshold(NumericTraits<InputPixelType>::NonpositiveMin());
-  threshold->SetUpperThreshold(calculator->GetThreshold());
-  threshold->SetInsideValue (m_InsideValue);
-  threshold->SetOutsideValue (m_OutsideValue);
-  threshold->Update();
-
-  this->GraftOutput(threshold->GetOutput());
+  thresholder->GraftOutput( this->GetOutput() );
+  thresholder->Update();
+  this->GraftOutput( thresholder->GetOutput() );
+  m_Threshold = calculator->GetOutput()->Get();
 }
 
 template<class TInputImage, class TOutputImage>
@@ -76,14 +84,10 @@ IntermodesThresholdImageFilter<TInputImage,TOutputImage>
      << static_cast<typename NumericTraits<OutputPixelType>::PrintType>(m_OutsideValue) << std::endl;
   os << indent << "InsideValue: "
      << static_cast<typename NumericTraits<OutputPixelType>::PrintType>(m_InsideValue) << std::endl;
-  os << indent << "NumberOfHistogramBins: "
-     << m_NumberOfHistogramBins << std::endl;
-  os << indent << "MaxSmoothingIterations: "
-     << m_MaxSmoothingIterations << std::endl;
-  os << indent << "Using Intermode/Minimum (true/false): "
-     << m_UseInterMode << std::endl;
   os << indent << "Threshold (computed): "
      << static_cast<typename NumericTraits<InputPixelType>::PrintType>(m_Threshold) << std::endl;
+  os << indent << "MaximumSmoothingIterations: " << m_MaximumSmoothingIterations << std::endl;
+  os << indent << "UseInterMode: " << m_UseInterMode << std::endl;
 
 }
 
