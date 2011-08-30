@@ -1,8 +1,8 @@
 
-#ifndef __itkIsoDataThresholdImageCalculator_hxx
-#define __itkIsoDataThresholdImageCalculator_hxx
+#ifndef __itkIsoDataThresholdCalculator_hxx
+#define __itkIsoDataThresholdCalculator_hxx
 
-#include "itkIsoDataThresholdImageCalculator.h"
+#include "itkIsoDataThresholdCalculator.h"
 
 #include "vnl/vnl_math.h"
 #include "itkProgressReporter.h"
@@ -15,7 +15,7 @@ namespace itk
  */
 template<class THistogram, class TOutput>
 void
-IsoDataThresholdImageCalculator<THistogram, TOutput>
+IsoDataThresholdCalculator<THistogram, TOutput>
 ::GenerateData(void)
 {
   const HistogramType * histogram = this->GetInput();

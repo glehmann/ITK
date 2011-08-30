@@ -1,13 +1,13 @@
 
-#ifndef __itkIsoDataThresholdImageCalculator_h
-#define __itkIsoDataThresholdImageCalculator_h
+#ifndef __itkIsoDataThresholdCalculator_h
+#define __itkIsoDataThresholdCalculator_h
 
 #include "itkThresholdCalculator.h"
 
 namespace itk
 {
 
-/** \class IsoDataThresholdImageCalculator
+/** \class IsoDataThresholdCalculator
  * \brief Computes the IsoData threshold for an image. Aka intermeans
  *
  * Iterative procedure based on the isodata algorithm [T.W. Ridler, S. Calvard, Picture
@@ -29,11 +29,11 @@ namespace itk
  * \ingroup Operators
  */
 template <class THistogram, class TOutput>
-class ITK_EXPORT IsoDataThresholdImageCalculator : public ThresholdCalculator<THistogram, TOutput>
+class ITK_EXPORT IsoDataThresholdCalculator : public ThresholdCalculator<THistogram, TOutput>
 {
 public:
   /** Standard class typedefs. */
-  typedef IsoDataThresholdImageCalculator Self;
+  typedef IsoDataThresholdCalculator      Self;
   typedef Object                          Superclass;
   typedef SmartPointer<Self>              Pointer;
   typedef SmartPointer<const Self>        ConstPointer;
@@ -42,19 +42,19 @@ public:
   itkNewMacro(Self);
 
   /** Run-time type information (and related methods). */
-  itkTypeMacro(IsoDataThresholdImageCalculator, Object);
+  itkTypeMacro(IsoDataThresholdCalculator, Object);
 
   /** Type definition for the input image. */
   typedef THistogram  HistogramType;
   typedef TOutput     OutputType;
 
 protected:
-  IsoDataThresholdImageCalculator() {};
-  virtual ~IsoDataThresholdImageCalculator() {};
+  IsoDataThresholdCalculator() {};
+  virtual ~IsoDataThresholdCalculator() {};
   void GenerateData(void);
 
 private:
-  IsoDataThresholdImageCalculator(const Self&); //purposely not implemented
+  IsoDataThresholdCalculator(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
 
 };
@@ -63,7 +63,7 @@ private:
 
 
 #ifndef ITK_MANUAL_INSTANTIATION
-#include "itkIsoDataThresholdImageCalculator.hxx"
+#include "itkIsoDataThresholdCalculator.hxx"
 #endif
 
 #endif

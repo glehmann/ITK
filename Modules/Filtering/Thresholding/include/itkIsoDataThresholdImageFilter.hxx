@@ -4,7 +4,7 @@
 
 #include "itkImageToHistogramFilter.h"
 #include "itkBinaryThresholdImageFilter.h"
-#include "itkIsoDataThresholdImageCalculator.h"
+#include "itkIsoDataThresholdCalculator.h"
 #include "itkProgressAccumulator.h"
 
 namespace itk {
@@ -35,7 +35,7 @@ IsoDataThresholdImageFilter<TInputImage, TOutputImage>
   progress->RegisterInternalFilter(histogramGenerator,.4f);
 
   // Compute the IsoData Threshold for the input image
-  typedef IsoDataThresholdImageCalculator<HistogramType, InputPixelType> CalculatorType;
+  typedef IsoDataThresholdCalculator<HistogramType, InputPixelType> CalculatorType;
   typename CalculatorType::Pointer calculator = CalculatorType::New();
   calculator->SetInput( histogramGenerator->GetOutput() );
   calculator->SetNumberOfThreads( this->GetNumberOfThreads() );
