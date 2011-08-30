@@ -16,7 +16,6 @@ IsoDataThresholdImageFilter<TInputImage, TOutputImage>
   m_OutsideValue   = NumericTraits<OutputPixelType>::Zero;
   m_InsideValue    = NumericTraits<OutputPixelType>::max();
   m_Threshold      = NumericTraits<InputPixelType>::Zero;
-  m_NumberOfHistogramBins = 128;
 }
 
 template<class TInputImage, class TOutputImage>
@@ -31,12 +30,12 @@ IsoDataThresholdImageFilter<TInputImage, TOutputImage>
   typedef typename HistogramGeneratorType::HistogramType          HistogramType;
   typename HistogramGeneratorType::Pointer histogramGenerator = HistogramGeneratorType::New();
   histogramGenerator->SetInput( this->GetInput() );
-  histogramGenerator->SetNumberOfBins( this->GetNumberOfHistogramBins() );
+  // histogramGenerator->SetAutoMinimumMaximum( true );
   histogramGenerator->SetNumberOfThreads( this->GetNumberOfThreads() );
   progress->RegisterInternalFilter(histogramGenerator,.4f);
 
   // Compute the IsoData Threshold for the input image
-  typedef IsoDataThresholdImageCalculator<HistogramType> CalculatorType;
+  typedef IsoDataThresholdImageCalculator<HistogramType, InputPixelType> CalculatorType;
   typename CalculatorType::Pointer calculator = CalculatorType::New();
   calculator->SetInput( histogramGenerator->GetOutput() );
   calculator->SetNumberOfThreads( this->GetNumberOfThreads() );
@@ -44,17 +43,18 @@ IsoDataThresholdImageFilter<TInputImage, TOutputImage>
 
   typedef BinaryThresholdImageFilter<TInputImage,TOutputImage> ThresholderType;
   typename ThresholderType::Pointer thresholder = ThresholderType::New();
-  threshold->SetInput (this->GetInput());
-  thresholder->SetLowerThreshold(NumericTraits<InputPixelType>::NonpositiveMin());
+  thresholder->SetInput(this->GetInput());
+  thresholder->SetLowerThreshold( NumericTraits<InputPixelType>::NonpositiveMin() );
   thresholder->SetUpperThresholdInput( calculator->GetOutput() );
   thresholder->SetInsideValue( this->GetInsideValue() );
   thresholder->SetOutsideValue( this->GetOutsideValue() );
   thresholder->SetNumberOfThreads( this->GetNumberOfThreads() );
-  progress->RegisterInternalFilter(threshold,.4f);
+  progress->RegisterInternalFilter(thresholder,.4f);
 
   thresholder->GraftOutput( this->GetOutput() );
-  threshold->Update();
-  this->GraftOutput( threshold->GetOutput() );
+  thresholder->Update();
+  this->GraftOutput( thresholder->GetOutput() );
+  m_Threshold = calculator->GetOutput()->Get();
 }
 
 template<class TInputImage, class TOutputImage>
@@ -80,8 +80,6 @@ IsoDataThresholdImageFilter<TInputImage,TOutputImage>
      << static_cast<typename NumericTraits<OutputPixelType>::PrintType>(m_OutsideValue) << std::endl;
   os << indent << "InsideValue: "
      << static_cast<typename NumericTraits<OutputPixelType>::PrintType>(m_InsideValue) << std::endl;
-  os << indent << "NumberOfHistogramBins: "
-     << m_NumberOfHistogramBins << std::endl;
   os << indent << "Threshold (computed): "
      << static_cast<typename NumericTraits<InputPixelType>::PrintType>(m_Threshold) << std::endl;
 

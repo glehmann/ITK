@@ -54,7 +54,7 @@ int itkIsoDataThresholdImageFilterTest(int argc, char* argv[] )
 
   reader->SetFileName( argv[1] );
   filter->SetInput( reader->GetOutput() );
-  filter->SetNumberOfHistogramBins (atoi(argv[3]));
+  //filter->SetNumberOfHistogramBins (atoi(argv[3]));
   writer->SetInput( filter->GetOutput() );
 
   filter->Update();

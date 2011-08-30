@@ -2,9 +2,7 @@
 #ifndef __itkIsoDataThresholdImageCalculator_h
 #define __itkIsoDataThresholdImageCalculator_h
 
-#include "itkObject.h"
-#include "itkObjectFactory.h"
-#include "itkNumericTraits.h"
+#include "itkThresholdCalculator.h"
 
 namespace itk
 {
@@ -30,8 +28,8 @@ namespace itk
  *
  * \ingroup Operators
  */
-template <class TInputImage>
-class ITK_EXPORT IsoDataThresholdImageCalculator : public Object
+template <class THistogram, class TOutput>
+class ITK_EXPORT IsoDataThresholdImageCalculator : public ThresholdCalculator<THistogram, TOutput>
 {
 public:
   /** Standard class typedefs. */
@@ -47,52 +45,17 @@ public:
   itkTypeMacro(IsoDataThresholdImageCalculator, Object);
 
   /** Type definition for the input image. */
-  typedef TInputImage  ImageType;
-
-  /** Pointer type for the image. */
-  typedef typename TInputImage::Pointer  ImagePointer;
-
-  /** Const Pointer type for the image. */
-  typedef typename TInputImage::ConstPointer ImageConstPointer;
-
-  /** Type definition for the input image pixel type. */
-  typedef typename TInputImage::PixelType PixelType;
-
-  /** Type definition for the input image region type. */
-  typedef typename TInputImage::RegionType RegionType;
-
-  /** Set the input image. */
-  itkSetConstObjectMacro(Image,ImageType);
-
-  /** Compute the IsoData's threshold for the input image. */
-  void Compute(void);
-
-  /** Return the IsoData's threshold value. */
-  itkGetConstMacro(Threshold,PixelType);
-
-  /** Set/Get the number of histogram bins. Default is 128. */
-  itkSetClampMacro( NumberOfHistogramBins, unsigned long, 1,
-                    NumericTraits<unsigned long>::max() );
-  itkGetConstMacro( NumberOfHistogramBins, unsigned long );
-
-
-  /** Set the region over which the values will be computed */
-  void SetRegion( const RegionType & region );
+  typedef THistogram  HistogramType;
+  typedef TOutput     OutputType;
 
 protected:
-  IsoDataThresholdImageCalculator();
+  IsoDataThresholdImageCalculator() {};
   virtual ~IsoDataThresholdImageCalculator() {};
-  void PrintSelf(std::ostream& os, Indent indent) const;
+  void GenerateData(void);
 
 private:
   IsoDataThresholdImageCalculator(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
-
-  PixelType            m_Threshold;
-  unsigned long        m_NumberOfHistogramBins;
-  ImageConstPointer    m_Image;
-  RegionType           m_Region;
-  bool                 m_RegionSetByUser;
 
 };
 

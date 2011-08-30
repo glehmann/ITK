@@ -13,7 +13,7 @@ namespace itk
  * \brief Base class to compute a threshold value based on the histogram of an image
  *
  */
-template <class TInputImage>
+template <class THistogram, class TOutput>
 class ITK_EXPORT ThresholdCalculator : public ProcessObject
 {
 public:
@@ -33,7 +33,8 @@ public:
   typedef THistogram HistogramType;
 
   /** output object type */
-  typedef SimpleDataObjectDecorator<double> OutputType;
+  typedef TOutput                               OutputType;
+  typedef SimpleDataObjectDecorator<OutputType> DecoratedOutputType;
 
   void SetInput( const HistogramType * input )
   {
@@ -50,18 +51,18 @@ public:
     return static_cast< const HistogramType * >( this->ProcessObject::GetInput(0) );
   }
 
-  OutputType * GetOutput()
+  DecoratedOutputType * GetOutput()
   {
     if ( this->GetNumberOfOutputs() < 1 )
       {
       return 0;
       }
-    return static_cast< OutputType * >( this->ProcessObject::GetOutput(0) );
+    return static_cast< DecoratedOutputType * >( this->ProcessObject::GetOutput(0) );
   }
 
   virtual typename DataObject::Pointer MakeOutput(unsigned int idx)
   {
-    return OutputType::New();
+    return DecoratedOutputType::New().GetPointer();
   }
 
 protected:
@@ -71,7 +72,6 @@ protected:
     this->ProcessObject::SetNthOutput( 0, this->MakeOutput(0) );
   }
   virtual ~ThresholdCalculator() {};
-  void PrintSelf(std::ostream& os, Indent indent) const;
 
 private:
   ThresholdCalculator(const Self&); //purposely not implemented
@@ -80,10 +80,5 @@ private:
 };
 
 } // end namespace itk
-
-
-#ifndef ITK_MANUAL_INSTANTIATION
-#include "itkThresholdCalculator.hxx"
-#endif
 
 #endif

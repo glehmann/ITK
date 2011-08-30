@@ -3,49 +3,94 @@
 #define __itkIsoDataThresholdImageCalculator_hxx
 
 #include "itkIsoDataThresholdImageCalculator.h"
-#include "itkImageRegionConstIteratorWithIndex.h"
-#include "itkMinimumMaximumImageCalculator.h"
 
 #include "vnl/vnl_math.h"
+#include "itkProgressReporter.h"
 
 namespace itk
 {
 
-/**
- * Constructor
- */
-template<class TInputImage>
-IsoDataThresholdImageCalculator<TInputImage>
-::IsoDataThresholdImageCalculator()
-{
-  m_Image = NULL;
-  m_Threshold = NumericTraits<PixelType>::Zero;
-  m_NumberOfHistogramBins = 128;
-  m_RegionSetByUser = false;
-}
-
-
 /*
  * Compute the IsoData's threshold
  */
-template<class TInputImage>
+template<class THistogram, class TOutput>
 void
-IsoDataThresholdImageCalculator<TInputImage>
-::Compute(void)
+IsoDataThresholdImageCalculator<THistogram, TOutput>
+::GenerateData(void)
 {
-
-  if ( !m_Image ) { return; }
-  if( !m_RegionSetByUser )
+  const HistogramType * histogram = this->GetInput();
+  // histogram->Print(std::cout);
+  if ( histogram->GetTotalFrequency() == 0 )
     {
-    m_Region = m_Image->GetRequestedRegion();
+    itkExceptionMacro(<< "Histogram is empty");
+    }
+  ProgressReporter progress(this, 0, histogram->GetSize(0) );
+  if( histogram->GetSize(0) == 1 )
+    {
+    this->GetOutput()->Set( histogram->GetMeasurement(0,0) );
     }
 
-  double totalPixels = (double) m_Region.GetNumberOfPixels();
-  if ( totalPixels == 0 ) { return; }
+  unsigned int currentPos = 0;
+  while (true)
+    {
+    // std::cout << "currentPos: " << currentPos << std::endl;
+    // skip the empty bins to speed up things
+    for( unsigned int i = currentPos; i < histogram->GetSize(0); i++)
+      {
+      if( histogram->GetFrequency(i, 0) > 0 )
+        {
+        currentPos = i;
+        break;
+        }
+      progress.CompletedPixel();
+      }
+    if( currentPos >= histogram->GetSize(0) )
+      {
+      // can't compute the isodata value - use the mean instead
+      this->GetOutput()->Set( histogram->Mean(0) );
+      return;
+      }
+    // compute the mean of the lower values
+    double l = 0;
+    double totl = 0;
+    for( unsigned i = 0; i <= currentPos; i++)
+      {
+      totl += histogram->GetFrequency(i, 0);
+      l += histogram->GetMeasurement(i, 0) * histogram->GetFrequency(i, 0);
+      }
+    // compute the mean of the higher values
+    double h = 0;
+    double toth = 0;
+    for( unsigned int i = currentPos + 1; i < histogram->GetSize(0); i++)
+      {
+      toth += histogram->GetFrequency(i, 0);
+      h += histogram->GetMeasurement(i, 0) * histogram->GetFrequency(i, 0);
+      }
+    // a test to avoid a potential division by 0
+    // std::cout << "totl: " << totl << std::endl;
+    // std::cout << "toth: " << toth << std::endl;
+    if (totl > 0 && toth > 0)
+      {
+      l /= totl;
+      h /= toth;
+      // std::cout << "histogram->GetMeasurement( currentPos, 0 ): " << histogram->GetMeasurement( currentPos, 0 ) << std::endl;
+      // std::cout << "l: " << l << std::endl;
+      // std::cout << "h: " << h << std::endl;
+      // std::cout << "(l + h) / 2: " << (l + h) / 2 << std::endl;
+      if( histogram->GetMeasurement( currentPos, 0 ) >= (l + h) / 2 )
+        {
+        this->GetOutput()->Set( static_cast<OutputType>( histogram->GetMeasurement( currentPos, 0 ) ) );
+        return;
+        }
+      }
+    currentPos++;
+    progress.CompletedPixel();
+    }
 
 
+/*
   // compute image max and min
-  typedef MinimumMaximumImageCalculator<TInputImage> RangeCalculator;
+  typedef MinimumMaximumImageCalculator<THistogram> RangeCalculator;
   typename RangeCalculator::Pointer rangeCalculator = RangeCalculator::New();
   rangeCalculator->SetImage( m_Image );
   rangeCalculator->Compute();
@@ -80,7 +125,7 @@ IsoDataThresholdImageCalculator<TInputImage>
   double binMultiplier = (double) m_NumberOfHistogramBins /
     (double) ( imageMax - imageMin );
 
-  typedef ImageRegionConstIteratorWithIndex<TInputImage> Iterator;
+  typedef ImageRegionConstIteratorWithIndex<THistogram> Iterator;
   Iterator iter( m_Image, m_Region );
 
   while ( !iter.IsAtEnd() )
@@ -150,29 +195,7 @@ IsoDataThresholdImageCalculator<TInputImage>
   m_Threshold = static_cast<PixelType>( imageMin +
                                         ( g ) / binMultiplier );
 
-
-}
-
-template<class TInputImage>
-void
-IsoDataThresholdImageCalculator<TInputImage>
-::SetRegion( const RegionType & region )
-{
-  m_Region = region;
-  m_RegionSetByUser = true;
-}
-
-
-template<class TInputImage>
-void
-IsoDataThresholdImageCalculator<TInputImage>
-::PrintSelf( std::ostream& os, Indent indent ) const
-{
-  Superclass::PrintSelf(os,indent);
-
-  os << indent << "Threshold: " << m_Threshold << std::endl;
-  os << indent << "NumberOfHistogramBins: " << m_NumberOfHistogramBins << std::endl;
-  os << indent << "Image: " << m_Image.GetPointer() << std::endl;
+*/
 }
 
 } // end namespace itk
