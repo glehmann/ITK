@@ -33,7 +33,7 @@ int itkLiThresholdImageFilterTest(int argc, char* argv[] )
     return EXIT_FAILURE;
     }
 
-  typedef  short          InputPixelType;
+  typedef  unsigned char  InputPixelType;
   typedef  unsigned char  OutputPixelType;
 
   typedef itk::Image< InputPixelType,  2 >   InputImageType;
@@ -54,7 +54,7 @@ int itkLiThresholdImageFilterTest(int argc, char* argv[] )
 
   reader->SetFileName( argv[1] );
   filter->SetInput( reader->GetOutput() );
-  filter->SetNumberOfHistogramBins (atoi(argv[3]));
+  // filter->SetNumberOfHistogramBins (atoi(argv[3]));
   writer->SetInput( filter->GetOutput() );
 
   filter->Update();

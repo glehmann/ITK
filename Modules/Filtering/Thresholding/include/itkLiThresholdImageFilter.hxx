@@ -2,8 +2,9 @@
 #define __itkLiThresholdImageFilter_hxx
 #include "itkLiThresholdImageFilter.h"
 
+#include "itkImageToHistogramFilter.h"
 #include "itkBinaryThresholdImageFilter.h"
-#include "itkLiThresholdImageCalculator.h"
+#include "itkLiThresholdCalculator.h"
 #include "itkProgressAccumulator.h"
 
 namespace itk {
@@ -15,7 +16,6 @@ LiThresholdImageFilter<TInputImage, TOutputImage>
   m_OutsideValue   = NumericTraits<OutputPixelType>::Zero;
   m_InsideValue    = NumericTraits<OutputPixelType>::max();
   m_Threshold      = NumericTraits<InputPixelType>::Zero;
-  m_NumberOfHistogramBins = 128;
 }
 
 template<class TInputImage, class TOutputImage>
@@ -26,27 +26,35 @@ LiThresholdImageFilter<TInputImage, TOutputImage>
   typename ProgressAccumulator::Pointer progress = ProgressAccumulator::New();
   progress->SetMiniPipelineFilter(this);
 
+  typedef itk::Statistics::ImageToHistogramFilter<InputImageType> HistogramGeneratorType;
+  typedef typename HistogramGeneratorType::HistogramType          HistogramType;
+  typename HistogramGeneratorType::Pointer histogramGenerator = HistogramGeneratorType::New();
+  histogramGenerator->SetInput( this->GetInput() );
+  // histogramGenerator->SetAutoMinimumMaximum( true );
+  histogramGenerator->SetNumberOfThreads( this->GetNumberOfThreads() );
+  progress->RegisterInternalFilter(histogramGenerator,.4f);
+
   // Compute the Li Threshold for the input image
-  typename LiThresholdImageCalculator<TInputImage>::Pointer calculator =
-    LiThresholdImageCalculator<TInputImage>::New();
-  calculator->SetImage (this->GetInput());
-  calculator->SetNumberOfHistogramBins (m_NumberOfHistogramBins);
-  calculator->Compute();
-  m_Threshold = calculator->GetThreshold();
+  typedef LiThresholdCalculator<HistogramType, InputPixelType> CalculatorType;
+  typename CalculatorType::Pointer calculator = CalculatorType::New();
+  calculator->SetInput( histogramGenerator->GetOutput() );
+  calculator->SetNumberOfThreads( this->GetNumberOfThreads() );
+  progress->RegisterInternalFilter(calculator,.2f);
 
-  typename BinaryThresholdImageFilter<TInputImage,TOutputImage>::Pointer threshold =
-    BinaryThresholdImageFilter<TInputImage,TOutputImage>::New();
+  typedef BinaryThresholdImageFilter<TInputImage,TOutputImage> ThresholderType;
+  typename ThresholderType::Pointer thresholder = ThresholderType::New();
+  thresholder->SetInput(this->GetInput());
+  thresholder->SetLowerThreshold( NumericTraits<InputPixelType>::NonpositiveMin() );
+  thresholder->SetUpperThresholdInput( calculator->GetOutput() );
+  thresholder->SetInsideValue( this->GetInsideValue() );
+  thresholder->SetOutsideValue( this->GetOutsideValue() );
+  thresholder->SetNumberOfThreads( this->GetNumberOfThreads() );
+  progress->RegisterInternalFilter(thresholder,.4f);
 
-  progress->RegisterInternalFilter(threshold,.5f);
-  threshold->GraftOutput (this->GetOutput());
-  threshold->SetInput (this->GetInput());
-  threshold->SetLowerThreshold(NumericTraits<InputPixelType>::NonpositiveMin());
-  threshold->SetUpperThreshold(calculator->GetThreshold());
-  threshold->SetInsideValue (m_InsideValue);
-  threshold->SetOutsideValue (m_OutsideValue);
-  threshold->Update();
-
-  this->GraftOutput(threshold->GetOutput());
+  thresholder->GraftOutput( this->GetOutput() );
+  thresholder->Update();
+  this->GraftOutput( thresholder->GetOutput() );
+  m_Threshold = calculator->GetOutput()->Get();
 }
 
 template<class TInputImage, class TOutputImage>
@@ -72,8 +80,6 @@ LiThresholdImageFilter<TInputImage,TOutputImage>
      << static_cast<typename NumericTraits<OutputPixelType>::PrintType>(m_OutsideValue) << std::endl;
   os << indent << "InsideValue: "
      << static_cast<typename NumericTraits<OutputPixelType>::PrintType>(m_InsideValue) << std::endl;
-  os << indent << "NumberOfHistogramBins: "
-     << m_NumberOfHistogramBins << std::endl;
   os << indent << "Threshold (computed): "
      << static_cast<typename NumericTraits<InputPixelType>::PrintType>(m_Threshold) << std::endl;
 
