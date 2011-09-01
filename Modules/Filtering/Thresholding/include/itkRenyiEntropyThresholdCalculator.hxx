@@ -1,8 +1,8 @@
 
-#ifndef __itkRenyiEntropyThresholdImageCalculator_hxx
-#define __itkRenyiEntropyThresholdImageCalculator_hxx
+#ifndef __itkRenyiEntropyThresholdCalculator_hxx
+#define __itkRenyiEntropyThresholdCalculator_hxx
 
-#include "itkRenyiEntropyThresholdImageCalculator.h"
+#include "itkRenyiEntropyThresholdCalculator.h"
 #include "itkImageRegionConstIteratorWithIndex.h"
 #include "itkMinimumMaximumImageCalculator.h"
 
@@ -10,90 +10,28 @@
 
 namespace itk
 {
-
-/**
- * Constructor
- */
-template<class TInputImage>
-RenyiEntropyThresholdImageCalculator<TInputImage>
-::RenyiEntropyThresholdImageCalculator()
-{
-  m_Image = NULL;
-  m_Threshold = NumericTraits<PixelType>::Zero;
-  m_NumberOfHistogramBins = 128;
-  m_RegionSetByUser = false;
-}
-
-
 /*
  * Compute the RenyiEntropy's threshold
  */
-template<class TInputImage>
+template<class THistogram, class TOutput>
 void
-RenyiEntropyThresholdImageCalculator<TInputImage>
-::Compute(void)
+RenyiEntropyThresholdCalculator<THistogram, TOutput>
+::GenerateData(void)
 {
-
-  if ( !m_Image ) { return; }
-  if( !m_RegionSetByUser )
+  const HistogramType * histogram = this->GetInput();
+  // histogram->Print(std::cout);
+  if ( histogram->GetTotalFrequency() == 0 )
     {
-    m_Region = m_Image->GetRequestedRegion();
+    itkExceptionMacro(<< "Histogram is empty");
+    }
+  ProgressReporter progress(this, 0, histogram->GetSize(0) );
+  if( histogram->GetSize(0) == 1 )
+    {
+    this->GetOutput()->Set( histogram->GetMeasurement(0,0) );
     }
 
-  double totalPixels = (double) m_Region.GetNumberOfPixels();
-  if ( totalPixels == 0 ) { return; }
+  unsigned int size = histogram->GetSize(0);
 
-
-  // compute image max and min
-  typedef MinimumMaximumImageCalculator<TInputImage> RangeCalculator;
-  typename RangeCalculator::Pointer rangeCalculator = RangeCalculator::New();
-  rangeCalculator->SetImage( m_Image );
-  rangeCalculator->Compute();
-
-  PixelType imageMin = rangeCalculator->GetMinimum();
-  PixelType imageMax = rangeCalculator->GetMaximum();
-
-  if ( imageMin >= imageMax )
-    {
-    m_Threshold = imageMin;
-    return;
-    }
-
-  // create a histogram
-  std::vector<double> relativeFrequency;
-
-  relativeFrequency.resize( m_NumberOfHistogramBins );
-
-  std::fill(relativeFrequency.begin(), relativeFrequency.end(), 0.0);
-
-  double binMultiplier = (double) m_NumberOfHistogramBins /
-    (double) ( imageMax - imageMin );
-
-  typedef ImageRegionConstIteratorWithIndex<TInputImage> Iterator;
-  Iterator iter( m_Image, m_Region );
-
-  while ( !iter.IsAtEnd() )
-    {
-    unsigned int binNumber;
-    PixelType value = iter.Get();
-
-    if ( value == imageMin )
-      {
-      binNumber = 0;
-      }
-    else
-      {
-      binNumber = (unsigned int) vcl_ceil((value - imageMin) * binMultiplier ) - 1;
-      if ( binNumber == m_NumberOfHistogramBins ) // in case of rounding errors
-        {
-        binNumber -= 1;
-        }
-      }
-
-    relativeFrequency[binNumber] += 1.0;
-    ++iter;
-
-    }
   const double tolerance = 2.220446049250313E-16;
   int threshold;
   int opt_threshold;
@@ -111,22 +49,22 @@ RenyiEntropyThresholdImageCalculator<TInputImage>
   double ent_back; /* entropy of the background pixels at a given threshold */
   double ent_obj;  /* entropy of the object pixels at a given threshold */
   double omega;
-  std::vector<double> norm_histo(relativeFrequency.size()); /* normalized histogram */
-  std::vector<double> P1(relativeFrequency.size());  /* cumulative normalized histogram */
-  std::vector<double> P2(relativeFrequency.size());
+  std::vector<double> norm_histo(size); /* normalized histogram */
+  std::vector<double> P1(size);  /* cumulative normalized histogram */
+  std::vector<double> P2(size);
 
   int total =0;
-  for (ih = 0; (unsigned)ih < relativeFrequency.size(); ih++ )
+  for (ih = 0; (unsigned)ih < size; ih++ )
     {
-    total += relativeFrequency[ih];
+    total += histogram->GetFrequency(ih, 0);
     }
 
-  for (ih = 0; (unsigned)ih < relativeFrequency.size(); ih++ )
-    norm_histo[ih] = (double)relativeFrequency[ih]/total;
+  for (ih = 0; (unsigned)ih < size; ih++ )
+    norm_histo[ih] = (double)histogram->GetFrequency(ih, 0)/total;
 
   P1[0]=norm_histo[0];
   P2[0]=1.0-P1[0];
-  for (ih = 1; (unsigned)ih < relativeFrequency.size(); ih++ )
+  for (ih = 1; (unsigned)ih < size; ih++ )
     {
     P1[ih]= P1[ih-1] + norm_histo[ih];
     P2[ih]= 1.0 - P1[ih];
@@ -134,7 +72,7 @@ RenyiEntropyThresholdImageCalculator<TInputImage>
 
   /* Determine the first non-zero bin */
   first_bin=0;
-  for (ih = 0; (unsigned)ih < relativeFrequency.size(); ih++ )
+  for (ih = 0; (unsigned)ih < size; ih++ )
     {
     if ( !(vcl_abs(P1[ih])<tolerance))
       {
@@ -144,8 +82,8 @@ RenyiEntropyThresholdImageCalculator<TInputImage>
     }
 
   /* Determine the last non-zero bin */
-  last_bin=relativeFrequency.size() - 1;
-  for (ih = relativeFrequency.size() - 1; ih >= first_bin; ih-- )
+  last_bin=size - 1;
+  for (ih = size - 1; ih >= first_bin; ih-- )
     {
     if ( !(vcl_abs(P2[ih])<tolerance))
     {
@@ -168,7 +106,7 @@ RenyiEntropyThresholdImageCalculator<TInputImage>
     ent_back = 0.0;
     for ( ih = 0; ih <= it; ih++ )
       {
-      if ( relativeFrequency[ih] !=0 )
+      if ( histogram->GetFrequency(ih, 0) != 0 )
         {
         ent_back -= ( norm_histo[ih] / P1[it] ) * vcl_log ( norm_histo[ih] / P1[it] );
         }
@@ -176,9 +114,9 @@ RenyiEntropyThresholdImageCalculator<TInputImage>
 
     /* Entropy of the object pixels */
     ent_obj = 0.0;
-    for ( ih = it + 1; (unsigned)ih < relativeFrequency.size(); ih++ )
+    for ( ih = it + 1; (unsigned)ih < size; ih++ )
       {
-      if (relativeFrequency[ih]!=0)
+      if (histogram->GetFrequency(ih, 0) != 0)
         {
         ent_obj -= ( norm_histo[ih] / P2[it] ) * vcl_log ( norm_histo[ih] / P2[it] );
         }
@@ -211,7 +149,7 @@ RenyiEntropyThresholdImageCalculator<TInputImage>
 
     /* Entropy of the object pixels */
     ent_obj = 0.0;
-    for ( ih = it + 1; (unsigned)ih < relativeFrequency.size(); ih++ )
+    for ( ih = it + 1; (unsigned)ih < size; ih++ )
       ent_obj += vcl_sqrt ( norm_histo[ih] / P2[it] );
 
     /* Total entropy */
@@ -239,7 +177,7 @@ RenyiEntropyThresholdImageCalculator<TInputImage>
 
     /* Entropy of the object pixels */
     ent_obj = 0.0;
-    for ( ih = it + 1; (unsigned)ih < relativeFrequency.size(); ih++ )
+    for ( ih = it + 1; (unsigned)ih < size; ih++ )
       ent_obj += ( norm_histo[ih] * norm_histo[ih] ) / ( P2[it] * P2[it] );
 
     /* Total entropy */
@@ -311,32 +249,7 @@ RenyiEntropyThresholdImageCalculator<TInputImage>
   opt_threshold = (int) (t_star1 * ( P1[t_star1] + 0.25 * omega * beta1 ) + 0.25 * t_star2 * omega * beta2  + t_star3 * ( P2[t_star3] + 0.25 * omega * beta3 ));
 
 
-  m_Threshold = static_cast<PixelType>( imageMin +
-                                        ( opt_threshold ) / binMultiplier );
-
-
-}
-
-template<class TInputImage>
-void
-RenyiEntropyThresholdImageCalculator<TInputImage>
-::SetRegion( const RegionType & region )
-{
-  m_Region = region;
-  m_RegionSetByUser = true;
-}
-
-
-template<class TInputImage>
-void
-RenyiEntropyThresholdImageCalculator<TInputImage>
-::PrintSelf( std::ostream& os, Indent indent ) const
-{
-  Superclass::PrintSelf(os,indent);
-
-  os << indent << "Threshold: " << m_Threshold << std::endl;
-  os << indent << "NumberOfHistogramBins: " << m_NumberOfHistogramBins << std::endl;
-  os << indent << "Image: " << m_Image.GetPointer() << std::endl;
+  this->GetOutput()->Set( static_cast<OutputType>( histogram->GetMeasurement( opt_threshold, 0 ) ) );
 }
 
 } // end namespace itk
