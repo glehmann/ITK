@@ -22,6 +22,8 @@ namespace itk
  * types.
  *
  * \ingroup Operators
+ * \ingroup ITKThresholding
+
  */
 template <class THistogram, class TOutput>
 class ITK_EXPORT RenyiEntropyThresholdCalculator : public ThresholdCalculator<THistogram, TOutput>

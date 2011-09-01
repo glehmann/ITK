@@ -21,6 +21,8 @@ namespace itk
  * types.
  *
  * \ingroup Operators
+ * \ingroup ITKThresholding
+
  */
 template <class THistogram, class TOutput>
 class ITK_EXPORT TriangleThresholdCalculator : public ThresholdCalculator<THistogram, TOutput>

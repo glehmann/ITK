@@ -23,6 +23,8 @@ namespace itk
  * types.
  *
  * \ingroup Operators
+ * \ingroup ITKThresholding
+
  */
 template <class THistogram, class TOutput>
 class ITK_EXPORT MaximumEntropyThresholdCalculator : public ThresholdCalculator<THistogram, TOutput>

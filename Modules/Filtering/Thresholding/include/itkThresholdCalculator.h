@@ -14,6 +14,8 @@ namespace itk
 /** \class ThresholdCalculator
  * \brief Base class to compute a threshold value based on the histogram of an image
  *
+ * \ingroup ITKThresholding
+
  */
 template <class THistogram, class TOutput>
 class ITK_EXPORT ThresholdCalculator : public ProcessObject

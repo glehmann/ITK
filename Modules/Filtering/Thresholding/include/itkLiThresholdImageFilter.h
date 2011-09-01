@@ -18,6 +18,8 @@ namespace itk {
  *
  * \sa BinaryThresholdImageFilter
  * \ingroup IntensityImageFilters  Multithreaded
+ * \ingroup ITKThresholding
+
  */
 
 template<class TInputImage, class TOutputImage>

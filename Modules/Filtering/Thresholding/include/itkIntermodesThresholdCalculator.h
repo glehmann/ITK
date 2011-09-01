@@ -18,7 +18,7 @@ namespace itk
  * j and k
  * Threshold t is (j+k)/2.
  * Images with histograms having extremely unequal peaks or a broad and
- * ﬂat valley are unsuitable for this method.
+ * flat valley are unsuitable for this method.
  *
  * This class is templated over the input histogram type.
  * \author Richard Beare
@@ -26,6 +26,8 @@ namespace itk
  * types.
  *
  * \ingroup Operators
+ * \ingroup ITKThresholding
+
  */
 template <class THistogram, class TOutput>
 class ITK_EXPORT IntermodesThresholdCalculator : public ThresholdCalculator<THistogram, TOutput>
