@@ -9,7 +9,7 @@ itkIntermodesThresholdImageFilterTest.cxx
 itkIsoDataThresholdImageFilterTest.cxx
 itkKittlerIllingworthThresholdImageFilterTest.cxx
 itkLiThresholdImageFilterTest.cxx
-itkMaxEntropyThresholdImageFilterTest.cxx
+itkMaximumEntropyThresholdImageFilterTest.cxx
 itkMomentsThresholdImageFilterTest.cxx
 itkOtsuMultipleThresholdsCalculatorTest.cxx
 itkOtsuMultipleThresholdsImageFilterTest.cxx
@@ -82,11 +82,11 @@ itk_add_test(NAME itkLiThresholdImageFilterTest
     --compare DATA{Baseline/itkLiThresholdImageFilterTest.png}
               ${ITK_TEST_OUTPUT_DIR}/itkLiThresholdImageFilterTest.png
     itkLiThresholdImageFilterTest ${ITK_DATA_ROOT}/Input/cthead1.png ${ITK_TEST_OUTPUT_DIR}/itkLiThresholdImageFilterTest.png 128)
-itk_add_test(NAME itkMaxEntropyThresholdImageFilterTest
+itk_add_test(NAME itkMaximumEntropyThresholdImageFilterTest
       COMMAND ITKThresholdingTestDriver
     --compare DATA{Baseline/itkMaxEntropyThresholdImageFilterTest.png}
               ${ITK_TEST_OUTPUT_DIR}/itkMaxEntropyThresholdImageFilterTest.png
-    itkMaxEntropyThresholdImageFilterTest ${ITK_DATA_ROOT}/Input/cthead1.png ${ITK_TEST_OUTPUT_DIR}/itkMaxEntropyThresholdImageFilterTest.png 128)
+    itkMaximumEntropyThresholdImageFilterTest ${ITK_DATA_ROOT}/Input/cthead1.png ${ITK_TEST_OUTPUT_DIR}/itkMaxEntropyThresholdImageFilterTest.png 128)
 itk_add_test(NAME itkMomentsThresholdImageFilterTest
       COMMAND ITKThresholdingTestDriver
     --compare DATA{Baseline/itkMomentsThresholdImageFilterTest.png}

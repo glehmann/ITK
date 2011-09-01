@@ -1,67 +1,66 @@
 
-#ifndef __itkMaxEntropyThresholdImageFilter_h
-#define __itkMaxEntropyThresholdImageFilter_h
+#ifndef __itkMaximumEntropyThresholdImageFilter_h
+#define __itkMaximumEntropyThresholdImageFilter_h
 
 #include "itkImageToImageFilter.h"
 #include "itkFixedArray.h"
 
 namespace itk {
 
-/** \class MaxEntropyThresholdImageFilter
- * \brief Threshold an image using the MaxEntropy Threshold
+/** \class MaximumEntropyThresholdImageFilter
+ * \brief Threshold an image using the MaximumEntropy Threshold
  *
  * This filter creates a binary thresholded image that separates an
  * image into foreground and background components. The filter
- * computes the threshold using the MaxEntropyThresholdImageCalculator and
+ * computes the threshold using the MaximumEntropyThresholdCalculator and
  * applies that theshold to the input image using the
- * BinaryThresholdImageFilter. The NunberOfHistogram bins can be set
- * for the Calculator. The InsideValue and OutsideValue can be set
- * for the BinaryThresholdImageFilter. Code derived from OtsuThresholdImageFilter
+ * BinaryThresholdImageFilter.
  *
- * \sa MaxEntropyThresholdImageCalculator
  * \sa BinaryThresholdImageFilter
- * \sa OtsuThresholdImageFilter
  * \ingroup IntensityImageFilters  Multithreaded
  */
 
 template<class TInputImage, class TOutputImage>
-class ITK_EXPORT MaxEntropyThresholdImageFilter :
+class ITK_EXPORT MaximumEntropyThresholdImageFilter :
     public ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:
   /** Standard Self typedef */
-  typedef MaxEntropyThresholdImageFilter                Self;
-  typedef ImageToImageFilter<TInputImage,TOutputImage>  Superclass;
-  typedef SmartPointer<Self>                            Pointer;
-  typedef SmartPointer<const Self>                      ConstPointer;
+  typedef MaximumEntropyThresholdImageFilter               Self;
+  typedef ImageToImageFilter<TInputImage,TOutputImage>     Superclass;
+  typedef SmartPointer<Self>                               Pointer;
+  typedef SmartPointer<const Self>                         ConstPointer;
 
   /** Method for creation through the object factory. */
   itkNewMacro(Self);
 
   /** Runtime information support. */
-  itkTypeMacro(MaxEntropyThresholdImageFilter, ImageToImageFilter);
+  itkTypeMacro(MaximumEntropyThresholdImageFilter, ImageToImageFilter);
+
+  typedef TInputImage                       InputImageType;
+  typedef TOutputImage                      OutputImageType;
 
   /** Image pixel value typedef. */
-  typedef typename TInputImage::PixelType   InputPixelType;
-  typedef typename TOutputImage::PixelType  OutputPixelType;
+  typedef typename InputImageType::PixelType   InputPixelType;
+  typedef typename OutputImageType::PixelType  OutputPixelType;
 
   /** Image related typedefs. */
-  typedef typename TInputImage::Pointer  InputImagePointer;
-  typedef typename TOutputImage::Pointer OutputImagePointer;
+  typedef typename InputImageType::Pointer  InputImagePointer;
+  typedef typename OutputImageType::Pointer OutputImagePointer;
 
-  typedef typename TInputImage::SizeType    InputSizeType;
-  typedef typename TInputImage::IndexType   InputIndexType;
-  typedef typename TInputImage::RegionType  InputImageRegionType;
-  typedef typename TOutputImage::SizeType   OutputSizeType;
-  typedef typename TOutputImage::IndexType  OutputIndexType;
-  typedef typename TOutputImage::RegionType OutputImageRegionType;
+  typedef typename InputImageType::SizeType    InputSizeType;
+  typedef typename InputImageType::IndexType   InputIndexType;
+  typedef typename InputImageType::RegionType  InputImageRegionType;
+  typedef typename OutputImageType::SizeType   OutputSizeType;
+  typedef typename OutputImageType::IndexType  OutputIndexType;
+  typedef typename OutputImageType::RegionType OutputImageRegionType;
 
 
   /** Image related typedefs. */
   itkStaticConstMacro(InputImageDimension, unsigned int,
-                      TInputImage::ImageDimension );
+                      InputImageType::ImageDimension );
   itkStaticConstMacro(OutputImageDimension, unsigned int,
-                      TOutputImage::ImageDimension );
+                      OutputImageType::ImageDimension );
 
   /** Set the "outside" pixel value. The default value
    * NumericTraits<OutputPixelType>::Zero. */
@@ -77,13 +76,9 @@ public:
   /** Get the "inside" pixel value. */
   itkGetConstMacro(InsideValue,OutputPixelType);
 
-  /** Set/Get the number of histogram bins. Defaults is 128. */
-  itkSetClampMacro( NumberOfHistogramBins, unsigned long, 1,
-                    NumericTraits<unsigned long>::max() );
-  itkGetConstMacro( NumberOfHistogramBins, unsigned long );
-
   /** Get the computed threshold. */
   itkGetConstMacro(Threshold,InputPixelType);
+
 
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */
@@ -96,28 +91,27 @@ public:
   /** End concept checking */
 #endif
 protected:
-  MaxEntropyThresholdImageFilter();
-  ~MaxEntropyThresholdImageFilter(){};
+  MaximumEntropyThresholdImageFilter();
+  ~MaximumEntropyThresholdImageFilter(){};
   void PrintSelf(std::ostream& os, Indent indent) const;
 
   void GenerateInputRequestedRegion();
   void GenerateData ();
 
 private:
-  MaxEntropyThresholdImageFilter(const Self&); //purposely not implemented
+  MaximumEntropyThresholdImageFilter(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
 
   InputPixelType      m_Threshold;
   OutputPixelType     m_InsideValue;
   OutputPixelType     m_OutsideValue;
-  unsigned long       m_NumberOfHistogramBins;
 
 }; // end of class
 
 } // end namespace itk
 
 #ifndef ITK_MANUAL_INSTANTIATION
-#include "itkMaxEntropyThresholdImageFilter.hxx"
+#include "itkMaximumEntropyThresholdImageFilter.hxx"
 #endif
 
 #endif

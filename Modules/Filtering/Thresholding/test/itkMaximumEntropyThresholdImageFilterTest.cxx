@@ -16,13 +16,13 @@
  *
  *=========================================================================*/
 
-#include "itkMaxEntropyThresholdImageFilter.h"
+#include "itkMaximumEntropyThresholdImageFilter.h"
 
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkFilterWatcher.h"
 
-int itkMaxEntropyThresholdImageFilterTest(int argc, char* argv[] )
+int itkMaximumEntropyThresholdImageFilterTest(int argc, char* argv[] )
 {
   if( argc < 4 )
     {
@@ -39,7 +39,7 @@ int itkMaxEntropyThresholdImageFilterTest(int argc, char* argv[] )
   typedef itk::Image< InputPixelType,  2 >   InputImageType;
   typedef itk::Image< OutputPixelType, 2 >   OutputImageType;
 
-  typedef itk::MaxEntropyThresholdImageFilter<
+  typedef itk::MaximumEntropyThresholdImageFilter<
                InputImageType, OutputImageType >  FilterType;
 
   typedef itk::ImageFileReader< InputImageType >  ReaderType;
@@ -54,7 +54,7 @@ int itkMaxEntropyThresholdImageFilterTest(int argc, char* argv[] )
 
   reader->SetFileName( argv[1] );
   filter->SetInput( reader->GetOutput() );
-  filter->SetNumberOfHistogramBins (atoi(argv[3]));
+  // filter->SetNumberOfHistogramBins (atoi(argv[3]));
   writer->SetInput( filter->GetOutput() );
 
   filter->Update();
