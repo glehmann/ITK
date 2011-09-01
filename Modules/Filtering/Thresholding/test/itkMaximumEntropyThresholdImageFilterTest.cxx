@@ -24,11 +24,10 @@
 
 int itkMaximumEntropyThresholdImageFilterTest(int argc, char* argv[] )
 {
-  if( argc < 4 )
+  if( argc < 3 )
     {
     std::cerr << "Usage: " << argv[0];
     std::cerr << " inputImageFile outputImageFile";
-    std::cerr << " numberOfHistogramBins";
     std::cerr << std::endl;
     return EXIT_FAILURE;
     }
