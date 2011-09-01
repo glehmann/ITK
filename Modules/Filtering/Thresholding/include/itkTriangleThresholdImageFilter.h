@@ -1,3 +1,4 @@
+
 #ifndef __itkTriangleThresholdImageFilter_h
 #define __itkTriangleThresholdImageFilter_h
 
@@ -11,15 +12,11 @@ namespace itk {
  *
  * This filter creates a binary thresholded image that separates an
  * image into foreground and background components. The filter
- * computes the threshold using the TriangleThresholdImageCalculator and
+ * computes the threshold using the TriangleThresholdCalculator and
  * applies that theshold to the input image using the
- * BinaryThresholdImageFilter. The NunberOfHistogram bins can be set
- * for the Calculator. The InsideValue and OutsideValue can be set
- * for the BinaryThresholdImageFilter. Code derived from OtsuThresholdImageFilter
+ * BinaryThresholdImageFilter.
  *
- * \sa TriangleThresholdImageCalculator
  * \sa BinaryThresholdImageFilter
- * \sa OtsuThresholdImageFilter
  * \ingroup IntensityImageFilters  Multithreaded
  */
 
@@ -29,10 +26,10 @@ class ITK_EXPORT TriangleThresholdImageFilter :
 {
 public:
   /** Standard Self typedef */
-  typedef TriangleThresholdImageFilter                  Self;
-  typedef ImageToImageFilter<TInputImage,TOutputImage>  Superclass;
-  typedef SmartPointer<Self>                            Pointer;
-  typedef SmartPointer<const Self>                      ConstPointer;
+  typedef TriangleThresholdImageFilter                     Self;
+  typedef ImageToImageFilter<TInputImage,TOutputImage>     Superclass;
+  typedef SmartPointer<Self>                               Pointer;
+  typedef SmartPointer<const Self>                         ConstPointer;
 
   /** Method for creation through the object factory. */
   itkNewMacro(Self);
@@ -40,27 +37,30 @@ public:
   /** Runtime information support. */
   itkTypeMacro(TriangleThresholdImageFilter, ImageToImageFilter);
 
+  typedef TInputImage                       InputImageType;
+  typedef TOutputImage                      OutputImageType;
+
   /** Image pixel value typedef. */
-  typedef typename TInputImage::PixelType   InputPixelType;
-  typedef typename TOutputImage::PixelType  OutputPixelType;
+  typedef typename InputImageType::PixelType   InputPixelType;
+  typedef typename OutputImageType::PixelType  OutputPixelType;
 
   /** Image related typedefs. */
-  typedef typename TInputImage::Pointer  InputImagePointer;
-  typedef typename TOutputImage::Pointer OutputImagePointer;
+  typedef typename InputImageType::Pointer  InputImagePointer;
+  typedef typename OutputImageType::Pointer OutputImagePointer;
 
-  typedef typename TInputImage::SizeType    InputSizeType;
-  typedef typename TInputImage::IndexType   InputIndexType;
-  typedef typename TInputImage::RegionType  InputImageRegionType;
-  typedef typename TOutputImage::SizeType   OutputSizeType;
-  typedef typename TOutputImage::IndexType  OutputIndexType;
-  typedef typename TOutputImage::RegionType OutputImageRegionType;
+  typedef typename InputImageType::SizeType    InputSizeType;
+  typedef typename InputImageType::IndexType   InputIndexType;
+  typedef typename InputImageType::RegionType  InputImageRegionType;
+  typedef typename OutputImageType::SizeType   OutputSizeType;
+  typedef typename OutputImageType::IndexType  OutputIndexType;
+  typedef typename OutputImageType::RegionType OutputImageRegionType;
 
 
   /** Image related typedefs. */
   itkStaticConstMacro(InputImageDimension, unsigned int,
-                      TInputImage::ImageDimension );
+                      InputImageType::ImageDimension );
   itkStaticConstMacro(OutputImageDimension, unsigned int,
-                      TOutputImage::ImageDimension );
+                      OutputImageType::ImageDimension );
 
   /** Set the "outside" pixel value. The default value
    * NumericTraits<OutputPixelType>::Zero. */
@@ -76,21 +76,9 @@ public:
   /** Get the "inside" pixel value. */
   itkGetConstMacro(InsideValue,OutputPixelType);
 
-  /** Set/Get the number of histogram bins. Defaults is 128. */
-  itkSetClampMacro( NumberOfHistogramBins, unsigned long, 1,
-                    NumericTraits<unsigned long>::max() );
-  itkGetConstMacro( NumberOfHistogramBins, unsigned long );
-
   /** Get the computed threshold. */
   itkGetConstMacro(Threshold,InputPixelType);
 
-  /** Rank for the robust estimation of maximum and minimum histogram
-  values - default 0.01 and 0.99 */
-  itkSetClampMacro(LowThresh, double, 0.0, 1.0);
-  itkGetConstMacro(LowThresh, double);
-
-  itkSetClampMacro(HighThresh, double, 0.0, 1.0);
-  itkGetConstMacro(HighThresh, double);
 
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */
@@ -117,9 +105,6 @@ private:
   InputPixelType      m_Threshold;
   OutputPixelType     m_InsideValue;
   OutputPixelType     m_OutsideValue;
-  unsigned long       m_NumberOfHistogramBins;
-  double              m_LowThresh;
-  double              m_HighThresh;
 
 }; // end of class
 
