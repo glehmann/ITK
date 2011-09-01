@@ -5,6 +5,8 @@
 #include "itkObject.h"
 #include "itkObjectFactory.h"
 #include "itkNumericTraits.h"
+#include "itkSimpleDataObjectDecorator.h"
+#include "itkProgressReporter.h"
 
 namespace itk
 {
@@ -63,6 +65,15 @@ public:
   virtual typename DataObject::Pointer MakeOutput(unsigned int idx)
   {
     return DecoratedOutputType::New().GetPointer();
+  }
+
+  const OutputType & GetThreshold()
+  {
+    if ( this->GetNumberOfOutputs() < 1 )
+      {
+      itkExceptionMacro(<<"No output available.");
+      }
+    return static_cast< DecoratedOutputType * >( this->ProcessObject::GetOutput(0) )->Get();
   }
 
 protected:
