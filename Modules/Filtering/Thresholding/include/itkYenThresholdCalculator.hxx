@@ -3,9 +3,7 @@
 #define __itkYenThresholdCalculator_hxx
 
 #include "itkYenThresholdCalculator.h"
-#include "itkImageRegionConstIteratorWithIndex.h"
-#include "itkMinimumMaximumImageCalculator.h"
-
+#include "itkProgressReporter.h"
 #include "vnl/vnl_math.h"
 
 namespace itk
@@ -44,19 +42,27 @@ YenThresholdCalculator<THistogram, TOutput>
   int total = histogram->GetTotalFrequency();
 
   for (ih = 0; (unsigned)ih < size; ih++ )
+    {
     norm_histo[ih] = (double)histogram->GetFrequency(ih, 0)/total;
+    }
 
   P1[0]=norm_histo[0];
   for (ih = 1; (unsigned)ih < size; ih++ )
+    {
     P1[ih]= P1[ih-1] + norm_histo[ih];
+    }
 
   P1_sq[0]=norm_histo[0]*norm_histo[0];
   for (ih = 1; (unsigned)ih < size; ih++ )
+    {
     P1_sq[ih]= P1_sq[ih-1] + norm_histo[ih] * norm_histo[ih];
+    }
 
   P2_sq[size - 1] = 0.0;
   for ( ih = (unsigned)size-2; ih >= 0; ih-- )
+    {
     P2_sq[ih] = P2_sq[ih + 1] + norm_histo[ih + 1] * norm_histo[ih + 1];
+    }
 
   /* Find the threshold that maximizes the criterion */
   threshold = -1;

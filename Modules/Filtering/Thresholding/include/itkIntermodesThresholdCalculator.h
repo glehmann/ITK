@@ -20,9 +20,7 @@ namespace itk
  * Images with histograms having extremely unequal peaks or a broad and
  * ﬂat valley are unsuitable for this method.
  *
- * Ported from the ImageJ implementation.
- *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  * \author Richard Beare
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

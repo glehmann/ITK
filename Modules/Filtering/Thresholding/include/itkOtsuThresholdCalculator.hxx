@@ -19,9 +19,7 @@
 #define __itkOtsuThresholdCalculator_hxx
 
 #include "itkOtsuThresholdCalculator.h"
-#include "itkImageRegionConstIteratorWithIndex.h"
-#include "itkMinimumMaximumImageCalculator.h"
-
+#include "itkProgressReporter.h"
 #include "vnl/vnl_math.h"
 
 namespace itk
@@ -37,7 +35,7 @@ OtsuThresholdCalculator< THistogram, TOutput >
     {
     itkExceptionMacro(<< "Histogram is empty");
     }
-  ProgressReporter progress(this, 0, histogram->GetSize(0) );
+  ProgressReporter progress(this, 0, histogram->GetSize(0)*2 );
   if( histogram->GetSize(0) == 1 )
     {
     this->GetOutput()->Set( histogram->GetMeasurement(0,0) );
@@ -54,6 +52,7 @@ OtsuThresholdCalculator< THistogram, TOutput >
     relativeFrequency[j] = histogram->GetFrequency(j,0);
     relativeFrequency[j] /= histogram->GetTotalFrequency();
     totalMean += ( j + 1 ) * relativeFrequency[j];
+    progress.CompletedPixel();
     }
 
   // compute Otsu's threshold by maximizing the between-class
@@ -95,6 +94,7 @@ OtsuThresholdCalculator< THistogram, TOutput >
     // cache old values
     freqLeftOld = freqLeft;
     meanLeftOld = meanLeft;
+    progress.CompletedPixel();
     }
   // should be this for backward compatibility
   // this->GetOutput()->Set( static_cast<OutputType>( histogram->GetBinMin( 0, maxBinNumber + 1 ) ) );

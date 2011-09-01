@@ -7,7 +7,7 @@
 namespace itk
 {
 
-/** \class OtsuThresholdImageCalculator
+/** \class OtsuThresholdCalculator
  * \brief Computes the Otsu's threshold for an image.
  *
  * This calculator computes the Otsu's threshold which separates an image
@@ -15,7 +15,7 @@ namespace itk
  * histogram of image intensities. The basic idea is to maximize the
  * between-class variance.
  *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  *
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

@@ -19,9 +19,7 @@ namespace itk
  * process is repeated until the threshold is larger than the composite average. That is,
  * threshold = (average background + average objects)/2
  *
- * Ported from the ImageJ implementation.
- *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  * \author Richard Beare
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

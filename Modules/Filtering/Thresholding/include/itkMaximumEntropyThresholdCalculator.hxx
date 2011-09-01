@@ -3,9 +3,7 @@
 #define __itkMaximumEntropyThresholdCalculator_hxx
 
 #include "itkMaximumEntropyThresholdCalculator.h"
-#include "itkImageRegionConstIteratorWithIndex.h"
-#include "itkMinimumMaximumImageCalculator.h"
-
+#include "itkProgressReporter.h"
 #include "vnl/vnl_math.h"
 
 namespace itk

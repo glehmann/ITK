@@ -3,9 +3,7 @@
 #define __itkMomentsThresholdCalculator_hxx
 
 #include "itkMomentsThresholdCalculator.h"
-#include "itkImageRegionConstIteratorWithIndex.h"
-#include "itkMinimumMaximumImageCalculator.h"
-
+#include "itkProgressReporter.h"
 #include "vnl/vnl_math.h"
 
 namespace itk
@@ -49,6 +47,7 @@ MomentsThresholdCalculator<THistogram, TOutput>
     m1 += m * histo[i];
     m2 += m * m * histo[i];
     m3 += m * m * m * histo[i];
+    progress.CompletedPixel();
     }
   //
   // First 4 moments of the gray-level image should match the first 4 moments

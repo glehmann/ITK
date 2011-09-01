@@ -7,20 +7,13 @@
 namespace itk
 {
 
-/** \class MomentsThresholdImageCalculator
+/** \class MomentsThresholdCalculator
  * \brief Computes the Moments's threshold for an image.
  *
  *  W. Tsai, "Moment-preserving thresholding: a new approach," Computer Vision,
  * Graphics, and Image Processing, vol. 29, pp. 377-393, 1985.
- * Ported to ImageJ plugin by G.Landini from the the open source project FOURIER 0.8
- * by  M. Emre Celebi , Department of Computer Science,  Louisiana State University in Shreveport
- * Shreveport, LA 71115, USA
- *  http://sourceforge.net/projects/fourier-ipal
- *  http://www.lsus.edu/faculty/~ecelebi/fourier.htm
  *
- * Ported from the ImageJ implementation. http://pacific.mpi-cbg.de/wiki/index.php/Auto_Threshold
- *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  * \author Richard Beare
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

@@ -12,14 +12,11 @@ namespace itk
  *
  * Kittler and J. Illingworth, "Minimum error thresholding," Pattern Recognition, vol. 19, pp. 41-47, 1986.
  * C. A. Glasbey, "An analysis of histogram-based thresholding algorithms," CVGIP: Graphical Models and Image Processing, vol. 55, pp. 532-537, 1993.
- * Ported to ImageJ plugin by G.Landini from Antti Niemisto's Matlab code (GPL)
  * Original Matlab code Copyright (C) 2004 Antti Niemisto
  * See http://www.cs.tut.fi/~ant/histthresh/ for an excellent slide presentation
  * and the original Matlab code.
  *
- * Ported from the ImageJ implementation.
- *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  * \author Richard Beare
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

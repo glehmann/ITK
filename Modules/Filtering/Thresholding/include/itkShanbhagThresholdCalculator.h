@@ -12,10 +12,8 @@ namespace itk
  *
  * Shanhbag A.G. (1994) "Utilization of Information Measure as a Means of
  * Image Thresholding" Graphical Models and Image Processing, 56(5): 414-419
- * Ported to ImageJ plugin by G.Landini from E Celebi's fourier_0.8 routines
- * Ported from the ImageJ implementation. http://pacific.mpi-cbg.de/wiki/index.php/Auto_Threshold
  *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  * \author Richard Beare
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

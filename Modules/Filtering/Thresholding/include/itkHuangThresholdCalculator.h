@@ -7,21 +7,17 @@
 namespace itk
 {
 
-/** \class HuangThresholdCalculator
- * \brief Computes the Huang threshold for an image. Aka intermeans
+/** \class HuangThresholdImageCalculator
+ * \brief Computes the Huang's threshold for an image.
  *
- * Iterative procedure based on the isodata algorithm [T.W. Ridler, S. Calvard, Picture
- * thresholding using an iterative selection method, IEEE Trans. System, Man and
- * Cybernetics, SMC-8 (1978) 630-632.]
- * The procedure divides the image into objects and background by taking an initial threshold,
- * then the averages of the pixels at or below the threshold and pixels above are computed.
- * The averages of those two values are computed, the threshold is incremented and the
- * process is repeated until the threshold is larger than the composite average. That is,
- * threshold = (average background + average objects)/2
+ * This calculator computes the Huang's fuzzy threshold which separates an image
+ * into foreground and background components. Uses Shannon's entropy
+ * function (one can also use Yager's entropy function)
+ * Huang L.-K. and Wang M.-J.J. (1995) "Image Thresholding by Minimizing
+ * the Measures of Fuzziness" Pattern Recognition, 28(1): 41-51
+ * Reimplemented (to handle 16-bit efficiently) by Johannes Schindelin Jan 31, 2011
  *
- * Ported from the ImageJ implementation.
- *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  * \author Richard Beare
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

@@ -21,7 +21,7 @@ namespace itk
  *    Electronic Imaging, 13(1): 146-165
  *    http://citeseer.ist.psu.edu/sezgin04survey.html
  *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  * \author Richard Beare
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

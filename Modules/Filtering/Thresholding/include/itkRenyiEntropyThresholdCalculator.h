@@ -15,12 +15,8 @@ namespace itk
  * Graphical Models and Image Processing, 29(3): 273-285
  * M. Emre Celebi
  * 06.15.2007
- * Ported to ImageJ plugin by G.Landini from E Celebi's fourier_0.8 routines
  *
- *
- * Ported from the ImageJ implementation. http://pacific.mpi-cbg.de/wiki/index.php/Auto_Threshold
- *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  * \author Richard Beare
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

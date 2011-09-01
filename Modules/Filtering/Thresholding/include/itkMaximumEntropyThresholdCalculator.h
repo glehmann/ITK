@@ -7,7 +7,7 @@
 namespace itk
 {
 
-/** \class MaximumEntropyThresholdImageCalculator
+/** \class MaximumEntropyThresholdCalculator
  * \brief Computes the MaximumEntropy's threshold for an image.
  *
  * Implements Kapur-Sahoo-Wong (Maximum Entropy) thresholding method
@@ -17,7 +17,7 @@ namespace itk
  * M. Emre Celebi
  * 06.15.2007
  *
- * This class is templated over the input image type.
+ * This class is templated over the input histogram type.
  * \author Richard Beare
  * \warning This method assumes that the input image consists of scalar pixel
  * types.

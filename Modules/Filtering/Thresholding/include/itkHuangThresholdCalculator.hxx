@@ -3,9 +3,7 @@
 #define __itkHuangThresholdCalculator_hxx
 
 #include "itkHuangThresholdCalculator.h"
-#include "itkImageRegionConstIteratorWithIndex.h"
-#include "itkMinimumMaximumImageCalculator.h"
-
+#include "itkProgressReporter.h"
 #include "vnl/vnl_math.h"
 
 namespace itk
