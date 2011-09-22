@@ -56,7 +56,7 @@ namespace itk
  *
  * \author Richard Beare. Department of Medicine, Monash University, Melbourne, Australia.
  *
- * \ingroup ITKReview
+ * \ingroup ITKMathematicalMorphology
  */
 
 template< class TInputImage, class TOutputImage, class TAttribute, class TFunction >
