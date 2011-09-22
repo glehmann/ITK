@@ -272,4 +272,14 @@ endforeach(d)
 END_WRAP_TYPE()
 set(itk_Wrap_LabelMap ${WRAPPER_TEMPLATES})
 
+WRAP_TYPE("itk::ComponentTree" "CT")
+  FOREACH(d ${ITK_WRAP_DIMS})
+    FOREACH(type ${WRAP_ITK_SCALAR})
+      ADD_TEMPLATE("${ITKM_${type}}${d}${ITKM_UL}" "${ITKT_${type}},${d},${ITKT_UL}")
+      ADD_TEMPLATE("${ITKM_${type}}${d}${ITKM_D}"  "${ITKT_${type}},${d},${ITKT_D}")
+    ENDFOREACH(type)
+  ENDFOREACH(d)
+END_WRAP_TYPE()
+SET(itk_Wrap_ComponentTree ${WRAPPER_TEMPLATES})
+
 #------------------------------------------------------------------------------

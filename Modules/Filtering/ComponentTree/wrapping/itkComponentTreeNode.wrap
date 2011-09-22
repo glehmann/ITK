@@ -1,0 +1,10 @@
+itk_wrap_include("itkIndex.h")
+
+itk_wrap_class("itk::ComponentTreeNode")
+  foreach(t ${WRAP_ITK_SCALAR})
+#    foreach(d ${WRAP_ITK_DIMS})
+      itk_wrap_template("${ITKM_${t}}SL${ITKM_UL}" "${ITKT_${t}}, signed long, ${ITKT_UL}")
+      itk_wrap_template("${ITKM_${t}}SL${ITKM_D}" "${ITKT_${t}}, signed long, ${ITKT_D}")
+#    endforeach(d)
+  endforeach(t)
+itk_end_wrap_class()

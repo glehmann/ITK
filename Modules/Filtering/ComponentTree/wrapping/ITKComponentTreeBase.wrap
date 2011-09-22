@@ -1,0 +1,46 @@
+itk_wrap_class("itk::ComponentTree" POINTER)
+  set(WRAPPER_TEMPLATES "${itk_Wrap_ComponentTree}")
+itk_end_wrap_class()
+
+itk_wrap_class("itk::ImageSource" POINTER)
+  foreach(t ${WRAP_ITK_SCALAR})
+    foreach(d ${ITK_WRAP_DIMS})
+      itk_wrap_template("${ITKM_CT${t}${d}UL}" "${ITKT_CT${t}${d}UL}")
+      itk_wrap_template("${ITKM_CT${t}${d}D}" "${ITKT_CT${t}${d}D}")
+    endforeach(d)
+  endforeach(t)
+itk_end_wrap_class()
+
+itk_wrap_class("itk::ImageToImageFilter" POINTER)
+  foreach(t ${WRAP_ITK_SCALAR})
+    foreach(d ${ITK_WRAP_DIMS})
+      # image -> component tree
+      itk_wrap_template("${ITKM_I${t}${d}}${ITKM_CT${t}${d}UL}" "${ITKT_I${t}${d}}, ${ITKT_CT${t}${d}UL}")
+      itk_wrap_template("${ITKM_I${t}${d}}${ITKM_CT${t}${d}D}" "${ITKT_I${t}${d}}, ${ITKT_CT${t}${d}D}")
+      # component tree -> component tree
+      itk_wrap_template("${ITKM_CT${t}${d}UL}${ITKM_CT${t}${d}UL}" "${ITKT_CT${t}${d}UL}, ${ITKT_CT${t}${d}UL}")
+      itk_wrap_template("${ITKM_CT${t}${d}D}${ITKM_CT${t}${d}D}" "${ITKT_CT${t}${d}D}, ${ITKT_CT${t}${d}D}")
+      # component tree -> image
+      itk_wrap_template("${ITKM_CT${t}${d}UL}${ITKM_I${t}${d}}" "${ITKT_CT${t}${d}UL}, ${ITKT_I${t}${d}}")
+      itk_wrap_template("${ITKM_CT${t}${d}D}${ITKM_I${t}${d}}" "${ITKT_CT${t}${d}D}, ${ITKT_I${t}${d}}")
+
+      if(NOT ITK_WRAP_unsigned_long)
+        itk_wrap_template("${ITKM_CT${t}${d}UL}${ITKM_IUL${d}}" "${ITKT_CT${t}${d}UL}, ${ITKT_IUL${d}}")
+      endif(NOT ITK_WRAP_unsigned_long)
+
+      foreach(t2 ${WRAP_ITK_REAL})
+        if(NOT "${t}" STREQUAL "${t2}")
+          itk_wrap_template("${ITKM_CT${t}${d}D}${ITKM_I${t2}${d}}" "${ITKT_CT${t}${d}D}, ${ITKT_I${t2}${d}}")
+        endif(NOT "${t}" STREQUAL "${t2}")
+      endforeach(t2)
+
+      foreach(t2 ${WRAP_ITK_USIGN_INT})
+        if(NOT "${t}" STREQUAL "${t2}")
+          itk_wrap_template("${ITKM_CT${t}${d}D}${ITKM_I${t2}${d}}" "${ITKT_CT${t}${d}D}, ${ITKT_I${t2}${d}}")
+          itk_wrap_template("${ITKM_CT${t}${d}UL}${ITKM_I${t2}${d}}" "${ITKT_CT${t}${d}UL}, ${ITKT_I${t2}${d}}")
+        endif(NOT "${t}" STREQUAL "${t2}")
+      endforeach(t2)
+
+    endforeach(d)
+  endforeach(t)
+itk_end_wrap_class()

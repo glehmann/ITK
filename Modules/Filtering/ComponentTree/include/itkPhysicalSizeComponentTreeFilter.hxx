@@ -1,0 +1,98 @@
+/*=========================================================================
+
+  Program:   Insight Segmentation & Registration Toolkit
+  Module:    $RCSfile: itkPhysicalSizeComponentTreeFilter.hxx,v $
+  Language:  C++
+  Date:      $Date: 2005/08/23 15:09:03 $
+  Version:   $Revision: 1.6 $
+
+  Copyright (c) Insight Software Consortium. All rights reserved.
+  See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
+
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+     PURPOSE.  See the above copyright notices for more information.
+
+=========================================================================*/
+#ifndef __itkPhysicalSizeComponentTreeFilter_hxx
+#define __itkPhysicalSizeComponentTreeFilter_hxx
+
+#include "itkPhysicalSizeComponentTreeFilter.h"
+
+
+namespace itk {
+
+template<class TImage, class TAttributeAccessor>
+PhysicalSizeComponentTreeFilter<TImage, TAttributeAccessor>
+::PhysicalSizeComponentTreeFilter()
+{
+}
+
+
+template<class TImage, class TAttributeAccessor>
+void
+PhysicalSizeComponentTreeFilter<TImage, TAttributeAccessor>
+::GenerateData()
+{
+  // Allocate the output
+  this->AllocateOutputs();
+
+  this->m_AttributeValuePerPixel = 1;
+  for( int i=0; i<ImageDimension; i++)
+    {
+    this->m_AttributeValuePerPixel *= this->GetInput()->GetSpacing()[i];
+    }
+
+  m_Progress = new ProgressReporter(this, 0, this->GetOutput()->GetRequestedRegion().GetNumberOfPixels());
+  this->SetComponentSize( this->GetOutput()->GetRoot() );
+  delete m_Progress;
+  m_Progress = NULL;
+
+//   assert( this->IsMonotone() );
+}
+
+
+template<class TImage, class TAttributeAccessor>
+void
+PhysicalSizeComponentTreeFilter<TImage, TAttributeAccessor>
+::SetComponentSize( NodeType* node )
+{
+  assert(node != NULL);
+
+  AttributeAccessorType accessor;
+
+  AttributeType size = 0;
+  const typename NodeType::ChildrenListType * childrenList = & node->GetChildren();
+  for( typename NodeType::ChildrenListType::const_iterator it=childrenList->begin(); it != childrenList->end(); it++ )
+    {
+    this->SetComponentSize( *it );
+    size += accessor( *it );
+    }
+
+  unsigned long nb = 0;
+  for( typename NodeType::IndexType current=node->GetFirstIndex();
+       current != NodeType::EndIndex;
+       current = this->GetInput()->GetLinkedListArray()[ current ] )
+    {
+    nb++;
+    m_Progress->CompletedPixel();
+    }
+
+  size += nb * this->m_AttributeValuePerPixel;
+  accessor( node, size );
+
+  assert( size > 0 );
+  // assert( node->GetAttribute() == size );
+}
+
+
+template<class TImage, class TAttributeAccessor>
+void
+PhysicalSizeComponentTreeFilter<TImage, TAttributeAccessor>
+::PrintSelf(std::ostream &os, Indent indent) const
+{
+  Superclass::PrintSelf(os, indent);
+}
+
+}// end namespace itk
+#endif

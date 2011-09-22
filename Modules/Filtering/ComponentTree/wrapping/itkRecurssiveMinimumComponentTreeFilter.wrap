@@ -1,0 +1,8 @@
+itk_wrap_class("itk::RecurssiveMinimumComponentTreeFilter" POINTER_WITH_SUPERCLASS)
+  foreach(t ${WRAP_ITK_SCALAR})
+    foreach(d ${WRAP_ITK_DIMS})
+      itk_wrap_template("${ITKM_CT${t}${d}UL}" "${ITKT_CT${t}${d}UL}")
+      itk_wrap_template("${ITKM_CT${t}${d}D}" "${ITKT_CT${t}${d}D}")
+    endforeach(d)
+  endforeach(t)
+itk_end_wrap_class()
