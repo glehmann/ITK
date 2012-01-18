@@ -1,0 +1,176 @@
+# -*- coding: utf-8 -*-
+
+import itkExtras
+
+class bioformats( itkExtras.pipeline ):
+  """ Use bioformat to import image in ITK.
+  """
+  def __init__(self, FileName=None, Channel=0, Series=0, Time=0, ImageType=None, Z=None, debug=False ):
+    import itk
+    itk.pipeline.__init__(self)
+
+    # set a fake name to avoid running the filter with the wrong channel
+    self.SetFileName( False )
+    self.__number_of_channels__ = 0
+    self.__number_of_series__ = 0
+    self.__number_of_times__ = 0
+    self.__number_of_z__ = 0
+    self.debug = debug
+
+    # if ImageType is None, give it a default value
+    # this is useful to avoid loading Base while loading this module
+    if ImageType == None:
+      ImageType = itk.Image.UC3
+    self.__image_type__ = ImageType
+
+    # remove useless SetInput() method created by the constructor of the pipeline class
+#     del self.SetInput
+
+    # set up the pipeline
+    self.connect( itk.ImageFileReader[ImageType].New() )
+
+    # and configure the pipeline
+    self.SetChannel( Channel )
+    self.SetSeries( Series )
+    self.SetTime( Time )
+    self.SetZ( Z )
+    self.SetFileName( FileName )
+
+  def Run(self):
+    if self.GetFileName():
+      if self.GetFileName().endswith(".nrrd"):
+        # bypass bioformats if input is tif
+        import itk
+        self.filters[0].SetFileName(self.GetFileName())
+
+        self.__number_of_channels__ = 1
+        self.__number_of_series__ = 1
+        self.__number_of_times__ = 1
+        self.__number_of_z__ = itk.size(self.filters[0])[2]
+      if self.GetFileName().endswith(".nrrd"):
+        # bypass bioformats if input is nrrd
+        import itk
+        self.filters[0].SetFileName(self.GetFileName())
+
+        self.__number_of_channels__ = 1
+        self.__number_of_series__ = 1
+        self.__number_of_times__ = 1
+        self.__number_of_z__ = itk.size(self.filters[0])[2]
+      else:
+        # found the dir where the needed files are
+        import os
+        dir = os.path.dirname(__file__)+os.sep+"bioformats"
+        cp = "%s%sbio-formats.jar:%s%sloci_tools.jar:%s" % (dir, os.sep, dir, os.sep, dir)
+        z = self.GetZ()
+        t = self.GetTime()
+        s = self.GetSeries()
+        c = self.GetChannel()
+        # remove the file if it already exist, to be sure that it will be written by bioformats
+        # use the tempfile module to get a non used file name and to put
+        # the file at the rignt place
+        import tempfile
+        self.__tmpFile__ = tempfile.NamedTemporaryFile(suffix='.nrrd')
+        # let reader know that the input file has changed
+        self.filters[0].SetFileName(self.__tmpFile__.name)
+
+        # prepare the command
+        import commands
+        if z == None and t == None:
+          raise Exception("Error: At least one of z or time must not be None.")
+        elif c == None:
+          com = "@JAVA_RUNTIME@ -cp %s SimpleImageConverter -z %s -series %s -time %s %s %s"
+          com = com % (cp, z, s, t, self.GetEscapedFileName(), self.__tmpFile__.name)
+        elif z == None:
+          com = "@JAVA_RUNTIME@ -cp %s SimpleImageConverter -channel %s -series %s -time %s %s %s"
+          com = com % (cp, c, s, t, self.GetEscapedFileName(), self.__tmpFile__.name)
+        elif t == None:
+          com = "@JAVA_RUNTIME@ -cp %s SimpleImageConverter -channel %s -series %s -z %s %s %s"
+          com = com % (cp, c, s, z, self.GetEscapedFileName(), self.__tmpFile__.name)
+        else:
+          com = "@JAVA_RUNTIME@ -cp %s SimpleImageConverter -channel %s -series %s -time %s -z %s %s %s"
+          com = com % (cp, c, s, t, z, self.GetEscapedFileName(), self.__tmpFile__.name)
+        if self.debug:
+          print com
+        status, output = commands.getstatusoutput( com )
+        if status:
+          raise Exception(output + "\n\n" + com)
+        # get some metadata
+        channelStr, timeStr, seriesStr, zStr = output.strip().split("\n")
+        if self.GetFileName().endswith(".tif"):
+          # stack are seen as time series - this is not what we usually want!
+          zStr, timeStr = timeStr, zStr
+
+        self.__number_of_channels__ = int(channelStr)
+        self.__number_of_series__ = int(seriesStr)
+        self.__number_of_times__ = int(timeStr)
+        self.__number_of_z__ = int(zStr)
+
+  def SetFileName( self, fileName ):
+    self.__file_name__ = fileName
+    self.Run()
+
+  def SetChannel( self, channel ):
+    self.__channel__ = channel
+    self.Run()
+
+  def SetSeries( self, series ):
+    self.__series__ = series
+    self.Run()
+
+  def SetTime( self, time ):
+    self.__time__ = time
+    self.Run()
+
+  def SetZ( self, z ):
+    self.__z__ = z
+    self.Run()
+
+  def GetFileName(self):
+    return self.__file_name__
+
+  def GetEscapedFileName(self):
+    return "'" + self.__file_name__.replace("'", "'\\''") + "'"
+
+  def GetChannel(self):
+    return self.__channel__
+
+  def GetSeries(self):
+    return self.__series__
+
+  def GetTime(self):
+    return self.__time__
+
+  def GetZ(self):
+    return self.__z__
+
+  def GetNumberOfChannels(self):
+    return self.__number_of_channels__
+
+  def GetNumberOfSeries(self):
+    return self.__number_of_series__
+
+  def GetNumberOfTimes(self):
+    return self.__number_of_times__
+
+  def GetNumberOfZ(self):
+    return self.__number_of_z__
+
+  def GetImageType(self):
+    return self.__image_type__
+
+  def __str__(self):
+    s = ""
+    s += "FileName: " + str(self.GetFileName()) + "\n"
+    s += "Channel: " + str(self.GetChannel()) + "\n"
+    s += "NumberOfChannels: " + str(self.GetNumberOfChannels()) + "\n"
+    s += "Time: " + str(self.GetTime()) + "\n"
+    s += "Z: " + str(self.GetZ()) + "\n"
+    s += "NumberOfTimes: " + str(self.GetNumberOfTimes()) + "\n"
+    s += "Series: " + str(self.GetSeries()) + "\n"
+    s += "NumberOfSeries: " + str(self.GetNumberOfSeries()) + "\n"
+    s += "NumberOfZ: " + str(self.GetNumberOfZ()) + "\n"
+    s += "ImageType: " + repr(self.GetImageType()) + "\n"
+    return s
+
+
+del itkExtras

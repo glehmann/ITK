@@ -48,3 +48,9 @@ endif("${WrapITK_BINARY_DIR}" MATCHES "^${WrapITK_SOURCE_DIR}$")
 
 # Install the package python files.
 WRAP_ITK_BINDINGS_INSTALL(/Python/itkExtras ${ITK_WRAP_PYTHON_EXTRAS_INSTALL_FILES})
+
+# bioformats stuff
+FIND_PACKAGE(Java REQUIRED)
+CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/bioformats.py.in"  "${CMAKE_CURRENT_BINARY_DIR}/bioformats.py")
+WRAP_ITK_BINDINGS_INSTALL("/Python/itkExtras" "${CMAKE_CURRENT_BINARY_DIR}/bioformats.py")
+add_subdirectory("bioformats")
