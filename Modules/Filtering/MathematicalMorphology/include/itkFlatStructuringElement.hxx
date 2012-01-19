@@ -44,6 +44,14 @@ namespace itk
 
 template< unsigned int NDimension >
 FlatStructuringElement< NDimension >
+::FlatStructuringElement(RadiusType radius)
+{
+  m_Decomposable = false;
+  SetRadius( radius );
+}
+
+template< unsigned int NDimension >
+FlatStructuringElement< NDimension >
 FlatStructuringElement< NDimension >
 ::Polygon(RadiusType radius, unsigned lines)
 {

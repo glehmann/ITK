@@ -44,6 +44,9 @@ str = str
 %typemap(out) float &, const float &, double &, const double &
   {$result = PyFloat_FromDouble( *$1 );}
 
+%typemap(out) bool &
+  {$result = PyBool_FromLong( *$1 );}
+
 // ignore reference count management
 %ignore Delete;
 %ignore SetReferenceCount;

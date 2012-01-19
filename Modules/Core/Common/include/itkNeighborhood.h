@@ -216,6 +216,12 @@ public:
   { return this->operator[]( this->GetNeighborhoodIndex(o) ); }
   const TPixel & operator[](const OffsetType & o) const
   { return this->operator[]( this->GetNeighborhoodIndex(o) ); }
+  TPixel & GetElement(const OffsetType & o)
+  { return this->operator[]( this->GetNeighborhoodIndex(o) ); }
+  const TPixel & GetElement(const OffsetType & o) const
+  { return this->operator[]( this->GetNeighborhoodIndex(o) ); }
+  void SetElement(const OffsetType & o, const TPixel & p)
+  { this->operator[]( this->GetNeighborhoodIndex(o) ) = p; }
 
   /** Returns the itk::Offset from the center of the Neighborhood to
       the requested neighbor index. */

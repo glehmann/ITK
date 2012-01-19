@@ -81,6 +81,7 @@ public:
   FlatStructuringElement() { m_Decomposable = false; }
 
   /** Various constructors */
+  FlatStructuringElement(RadiusType radius);
 
   /**
    * Create a box structuring element. The structuring element is
