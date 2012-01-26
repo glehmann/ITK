@@ -1,5 +1,5 @@
 find_package(Java REQUIRED)
-file(DOWNLOAD http://www.loci.wisc.edu/files/software/archive/4.2.1/loci_tools.jar
+file(DOWNLOAD http://loci.wisc.edu/files/software/archive/4.2.1/loci_tools.jar
               ${CMAKE_CURRENT_BINARY_DIR}/loci_tools.jar
               EXPECTED_MD5 fa9857f440719d15d1f394f865bd75cd
               SHOW_PROGRESS)
